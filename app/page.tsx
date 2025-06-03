@@ -42,6 +42,7 @@ import PersistentTimer from "@/components/persistent-timer"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import AIServicesHub from "@/components/ai-services-hub"
 import { Progress } from "@/components/ui/progress"
+import RealTimeClock from "@/components/real-time-clock"
 
 interface Task {
   id: string
@@ -92,6 +93,7 @@ function StudyHubContent() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
   const [grades, setGrades] = useState<Grade[]>([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isNewUser, setIsNewUser] = useState<boolean | null>(null)
 
   // Use ref to prevent multiple auth listener setups
   const authListenerSetup = useRef(false)
@@ -225,6 +227,28 @@ function StudyHubContent() {
       }
     }
   }, [])
+
+  // Check if user is new or returning
+  useEffect(() => {
+    if (user) {
+      const userId = user.uid
+      const userFirstVisit = localStorage.getItem(`studyHub_firstVisit_${userId}`)
+
+      if (!userFirstVisit) {
+        // New user
+        setIsNewUser(true)
+        localStorage.setItem(`studyHub_firstVisit_${userId}`, new Date().toISOString())
+
+        // Show welcome message for 5 seconds, then switch to "Welcome back"
+        setTimeout(() => {
+          setIsNewUser(false)
+        }, 5000)
+      } else {
+        // Returning user
+        setIsNewUser(false)
+      }
+    }
+  }, [user])
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -554,7 +578,7 @@ function StudyHubContent() {
       </div>
 
       {/* Header */}
-      <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border-b border-gray-200/50 dark:border-gray-700/50 sticky top-0 z-50 shadow-xl relative">
+      <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border-b border-gray-200/50 dark:border-gray-700/50 fixed top-0 left-0 right-0 z-50 shadow-xl">
         <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 relative">
           <div className="flex items-center justify-between">
             {/* Logo and Title */}
@@ -570,9 +594,18 @@ function StudyHubContent() {
                   StudyHub Elite
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-xl font-medium mt-1 hidden sm:block">
-                  Welcome back, {user.displayName?.split(" ")[0] || user.email?.split("@")[0]}! ✨
+                  {isNewUser === null
+                    ? `Hello, ${user.displayName?.split(" ")[0] || user.email?.split("@")[0]}! ✨`
+                    : isNewUser
+                      ? `Welcome to StudyHub Elite, ${user.displayName?.split(" ")[0] || user.email?.split("@")[0]}! ✨`
+                      : `Welcome back, ${user.displayName?.split(" ")[0] || user.email?.split("@")[0]}! ✨`}
                 </p>
               </div>
+            </div>
+
+            {/* Real-time Clock */}
+            <div className="hidden sm:block">
+              <RealTimeClock />
             </div>
 
             {/* Desktop Navigation */}
@@ -609,8 +642,17 @@ function StudyHubContent() {
                 {/* User Welcome */}
                 <div className="text-center pb-4 border-b border-gray-200/50 dark:border-gray-700/50 mb-4">
                   <p className="text-gray-600 dark:text-gray-300 text-lg font-medium">
-                    Welcome, {user.displayName?.split(" ")[0] || user.email?.split("@")[0]}! ✨
+                    {isNewUser === null
+                      ? `Hello, ${user.displayName?.split(" ")[0] || user.email?.split("@")[0]}! ✨`
+                      : isNewUser
+                        ? `Welcome, ${user.displayName?.split(" ")[0] || user.email?.split("@")[0]}! ✨`
+                        : `Welcome back, ${user.displayName?.split(" ")[0] || user.email?.split("@")[0]}! ✨`}
                   </p>
+                </div>
+
+                {/* Mobile Clock */}
+                <div className="sm:hidden flex justify-center pb-4 border-b border-gray-200/50 dark:border-gray-700/50 mb-4">
+                  <RealTimeClock />
                 </div>
 
                 {/* Navigation Items */}
@@ -702,7 +744,7 @@ function StudyHubContent() {
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10 relative">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10 relative pt-32 sm:pt-36">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8 sm:space-y-12">
           {/* Desktop Tab Navigation */}
           <div className="hidden lg:block bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl rounded-3xl p-2 shadow-2xl border border-gray-200/50 dark:border-gray-700/50 relative overflow-hidden">
@@ -770,7 +812,7 @@ function StudyHubContent() {
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-3xl"></div>
               <div className="relative px-4">
                 <h2 className="text-3xl sm:text-7xl lg:text-8xl font-bold bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4 sm:mb-6 leading-tight">
-                  Welcome Back!
+                  {isNewUser === null ? "Loading..." : isNewUser ? "Welcome!" : "Welcome Back!"}
                 </h2>
 
                 {/* Motivational Message */}
