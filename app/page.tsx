@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useAuthState } from "react-firebase-hooks/auth"
-import { auth } from "@/lib/firebase"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/hooks/use-toast"
+import { useState, useEffect } from "react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import {
   Home,
   CheckSquare,
@@ -21,24 +21,27 @@ import {
   Menu,
   MessageSquare,
   Eye,
-} from "lucide-react"
+} from "lucide-react";
 
 // Import all the components
-import SignIn from "@/components/auth/sign-in"
-import EnhancedTaskManager from "@/components/enhanced-task-manager"
-import TaskCalendar from "@/components/task-calendar"
-import PomodoroTimer from "@/components/pomodoro-timer"
-import AIFlashcardGenerator from "@/components/ai-flashcard-generator"
-import AIServicesHub from "@/components/ai-services-hub"
-import AIStudyAssistant from "@/components/ai-study-assistant"
-import UserProfile from "@/components/gamification/user-profile"
-import StudyRooms from "@/components/collaboration/study-rooms"
-import EnhancedAnalytics from "@/components/analytics/enhanced-analytics"
-import WelcomeSplash from "@/components/onboarding/welcome-splash"
-import EditProfile from "@/components/profile/edit-profile"
-import FlashcardViewer from "@/components/flashcards/flashcard-viewer"
-import AchievementPopup from "@/components/gamification/achievement-popup"
-import { gamificationService, type Achievement } from "@/lib/gamification-service"
+import SignIn from "@/components/auth/sign-in";
+import EnhancedTaskManager from "@/components/enhanced-task-manager";
+import TaskCalendar from "@/components/task-calendar";
+import PomodoroTimer from "@/components/pomodoro-timer";
+import AIFlashcardGenerator from "@/components/ai-flashcard-generator";
+import AIServicesHub from "@/components/ai-services-hub";
+import AIStudyAssistant from "@/components/ai-study-assistant";
+import UserProfile from "@/components/gamification/user-profile";
+import StudyRooms from "@/components/collaboration/study-rooms";
+import EnhancedAnalytics from "@/components/analytics/enhanced-analytics";
+import WelcomeSplash from "@/components/onboarding/welcome-splash";
+import EditProfile from "@/components/profile/edit-profile";
+import FlashcardViewer from "@/components/flashcards/flashcard-viewer";
+import AchievementPopup from "@/components/gamification/achievement-popup";
+import {
+  gamificationService,
+  type Achievement,
+} from "@/lib/gamification-service";
 
 type TabType =
   | "dashboard"
@@ -50,96 +53,110 @@ type TabType =
   | "collaboration"
   | "analytics"
   | "flashcard-viewer"
-  | "ai-assistant"
+  | "ai-assistant";
 
 export default function StudyHub() {
-  const [user, loading, error] = useAuthState(auth)
-  const [activeTab, setActiveTab] = useState<TabType>("dashboard")
-  const [userStats, setUserStats] = useState<any>(null)
-  const [isLoadingStats, setIsLoadingStats] = useState(true)
-  const { toast } = useToast()
-  const [showWelcomeSplash, setShowWelcomeSplash] = useState(false)
-  const [showEditProfile, setShowEditProfile] = useState(false)
-  const [userDisplayName, setUserDisplayName] = useState("")
-  const [isNewUser, setIsNewUser] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [user, loading, error] = useAuthState(auth);
+  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
+  const [userStats, setUserStats] = useState<any>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const { toast } = useToast();
+  const [showWelcomeSplash, setShowWelcomeSplash] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [userDisplayName, setUserDisplayName] = useState("");
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Achievement popup states
   const [achievementPopup, setAchievementPopup] = useState<{
-    achievement: Achievement | null
-    isVisible: boolean
+    achievement: Achievement | null;
+    isVisible: boolean;
   }>({
     achievement: null,
     isVisible: false,
-  })
+  });
 
   // Check if device is mobile
   useEffect(() => {
     const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
+      setIsMobile(window.innerWidth < 768);
+    };
 
-    checkIfMobile()
-    window.addEventListener("resize", checkIfMobile)
+    checkIfMobile();
+    window.addEventListener("resize", checkIfMobile);
 
     return () => {
-      window.removeEventListener("resize", checkIfMobile)
-    }
-  }, [])
+      window.removeEventListener("resize", checkIfMobile);
+    };
+  }, []);
+
+  // Update clock every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Subscribe to achievement notifications
   useEffect(() => {
-    const unsubscribe = gamificationService.onAchievementUnlocked((achievement) => {
-      setAchievementPopup({
-        achievement,
-        isVisible: true,
-      })
-    })
+    const unsubscribe = gamificationService.onAchievementUnlocked(
+      (achievement) => {
+        setAchievementPopup({
+          achievement,
+          isVisible: true,
+        });
+      }
+    );
 
-    return unsubscribe
-  }, [])
+    return unsubscribe;
+  }, []);
 
   // Load user stats and sync status
   useEffect(() => {
     if (user) {
-      loadUserStats()
+      loadUserStats();
       // Update streak on login
-      gamificationService.updateStreak(user.uid)
+      gamificationService.updateStreak(user.uid);
     }
-  }, [user])
+  }, [user]);
 
   const loadUserStats = async () => {
-    if (!user) return
+    if (!user) return;
 
     try {
-      setIsLoadingStats(true)
+      setIsLoadingStats(true);
 
       // Check multiple indicators to determine if user is truly new
-      const hasBeenWelcomed = localStorage.getItem(`welcomed_${user.uid}`)
-      const hasExistingStats = localStorage.getItem(`userStats_${user.uid}`)
+      const hasBeenWelcomed = localStorage.getItem(`welcomed_${user.uid}`);
+      const hasExistingStats = localStorage.getItem(`userStats_${user.uid}`);
 
       // Try to get existing stats from Firebase
-      let existingFirebaseStats = null
+      let existingFirebaseStats = null;
       try {
-        const stats = await gamificationService.getUserStats(user.uid)
+        const stats = await gamificationService.getUserStats(user.uid);
         // If user has more than just the default "first-steps" achievement, they're not new
-        existingFirebaseStats = stats.achievements && stats.achievements.length > 1 ? stats : null
+        existingFirebaseStats =
+          stats.achievements && stats.achievements.length > 1 ? stats : null;
       } catch (error) {
-        console.log("No existing Firebase stats found")
+        console.log("No existing Firebase stats found");
       }
 
       // User is only new if ALL of these are true:
       // 1. Never been welcomed in localStorage
       // 2. No existing stats in localStorage
       // 3. No meaningful stats in Firebase
-      const isTrulyNewUser = !hasBeenWelcomed && !hasExistingStats && !existingFirebaseStats
+      const isTrulyNewUser =
+        !hasBeenWelcomed && !hasExistingStats && !existingFirebaseStats;
 
       if (isTrulyNewUser) {
-        console.log("New user detected - showing welcome splash")
-        setIsNewUser(true)
-        setShowWelcomeSplash(true)
-        setUserDisplayName(user.displayName || "Study Champion")
+        console.log("New user detected - showing welcome splash");
+        setIsNewUser(true);
+        setShowWelcomeSplash(true);
+        setUserDisplayName(user.displayName || "Study Champion");
 
         // Set fresh stats for new users
         const freshStats = {
@@ -154,16 +171,20 @@ export default function StudyHub() {
           completedTasks: 0,
           badges: [],
           achievements: [],
-        }
-        setUserStats(freshStats)
+        };
+        setUserStats(freshStats);
       } else {
-        console.log("Existing user detected - loading existing data")
-        setIsNewUser(false)
-        setShowWelcomeSplash(false) // Explicitly set to false for existing users
-        setUserDisplayName(user.displayName || localStorage.getItem(`displayName_${user.uid}`) || "Study Champion")
+        console.log("Existing user detected - loading existing data");
+        setIsNewUser(false);
+        setShowWelcomeSplash(false); // Explicitly set to false for existing users
+        setUserDisplayName(
+          user.displayName ||
+            localStorage.getItem(`displayName_${user.uid}`) ||
+            "Study Champion"
+        );
 
         // For returning users, get real data
-        const stats = await gamificationService.getUserStats(user.uid)
+        const stats = await gamificationService.getUserStats(user.uid);
         const enhancedStats = {
           ...stats,
           totalHours: Math.floor(stats.studyHours),
@@ -172,64 +193,80 @@ export default function StudyHub() {
           level: stats.level,
           badges: stats.badges,
           achievements: stats.achievements,
-        }
-        setUserStats(enhancedStats)
+        };
+        setUserStats(enhancedStats);
       }
     } catch (error) {
-      console.error("Error loading user stats:", error)
+      console.error("Error loading user stats:", error);
       toast({
         title: "Error",
         description: "Failed to load user statistics.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoadingStats(false)
+      setIsLoadingStats(false);
     }
-  }
+  };
 
   const handleTabClick = (tab: TabType) => {
-    setActiveTab(tab)
-    setShowMobileMenu(false)
+    setActiveTab(tab);
+    setShowMobileMenu(false);
     toast({
       title: "Navigation",
       description: `Switched to ${tab} section`,
-    })
-  }
+    });
+  };
 
   const handleWelcomeComplete = async (displayName: string) => {
-    setUserDisplayName(displayName)
-    setShowWelcomeSplash(false)
-    localStorage.setItem(`welcomed_${user.uid}`, "true")
-    localStorage.setItem(`displayName_${user.uid}`, displayName)
+    setUserDisplayName(displayName);
+    setShowWelcomeSplash(false);
+    localStorage.setItem(`welcomed_${user.uid}`, "true");
+    localStorage.setItem(`displayName_${user.uid}`, displayName);
 
     // Initialize user stats properly
-    const stats = await gamificationService.getUserStats(user.uid)
+    const stats = await gamificationService.getUserStats(user.uid);
     setUserStats({
       ...stats,
       totalHours: Math.floor(stats.studyHours),
       totalTasks: stats.tasksCompleted,
       completedTasks: stats.tasksCompleted,
-    })
+    });
 
     // Award welcome bonus
     toast({
       title: "🎉 Welcome Bonus Awarded!",
       description: "You've earned 50 XP for joining StudyHub Elite!",
-    })
-  }
+    });
+  };
 
   const handleProfileSave = (newDisplayName: string) => {
-    setUserDisplayName(newDisplayName)
-    setShowEditProfile(false)
-    localStorage.setItem(`displayName_${user.uid}`, newDisplayName)
-  }
+    setUserDisplayName(newDisplayName);
+    setShowEditProfile(false);
+    localStorage.setItem(`displayName_${user.uid}`, newDisplayName);
+  };
 
   const handleAchievementPopupClose = () => {
     setAchievementPopup({
       achievement: null,
       isVisible: false,
-    })
-  }
+    });
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString([], {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -243,41 +280,54 @@ export default function StudyHub() {
           />
         ) : (
           <div>Loading...</div>
-        )
+        );
       case "tasks":
-        return <EnhancedTaskManager user={user} />
+        return <EnhancedTaskManager user={user} />;
       case "calendar":
-        return <TaskCalendar user={user} />
+        return <TaskCalendar user={user} />;
       case "timer":
-        return <PomodoroTimer />
+        return <PomodoroTimer />;
       case "flashcards":
         return (
           <AIFlashcardGenerator
             user={user}
-            onAddFlashcards={(flashcards) => console.log("Added flashcards:", flashcards)}
+            onAddFlashcards={(flashcards) =>
+              console.log("Added flashcards:", flashcards)
+            }
           />
-        )
+        );
       case "flashcard-viewer":
-        return <FlashcardViewer user={user} />
+        return <FlashcardViewer user={user} />;
       case "ai-tools":
-        return <AIServicesHub />
+        return <AIServicesHub />;
       case "ai-assistant":
-        return <AIStudyAssistant tasks={[]} studyHours={userStats?.studyHours || 0} grades={[]} setTasks={() => {}} />
+        return (
+          <AIStudyAssistant
+            tasks={[]}
+            studyHours={userStats?.studyHours || 0}
+            grades={[]}
+            setTasks={() => {}}
+          />
+        );
       case "collaboration":
-        return <StudyRooms user={user} />
+        return <StudyRooms user={user} />;
       case "analytics":
-        return <EnhancedAnalytics user={user} />
+        return <EnhancedAnalytics user={user} />;
       default:
         return userStats ? (
-          <UserProfile user={user} studyStats={userStats} displayName={userDisplayName} />
+          <UserProfile
+            user={user}
+            studyStats={userStats}
+            displayName={userDisplayName}
+          />
         ) : (
           <div>Loading...</div>
-        )
+        );
     }
-  }
+  };
 
   if (showWelcomeSplash) {
-    return <WelcomeSplash user={user} onComplete={handleWelcomeComplete} />
+    return <WelcomeSplash user={user} onComplete={handleWelcomeComplete} />;
   }
 
   if (showEditProfile) {
@@ -290,7 +340,7 @@ export default function StudyHub() {
           onCancel={() => setShowEditProfile(false)}
         />
       </div>
-    )
+    );
   }
 
   if (loading) {
@@ -298,24 +348,28 @@ export default function StudyHub() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
         <div className="text-center">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading StudyHub Elite...</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading StudyHub Elite...
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-pink-100 dark:from-gray-900 dark:to-gray-800">
         <div className="text-center">
-          <p className="text-red-600 dark:text-red-400">Error: {error.message}</p>
+          <p className="text-red-600 dark:text-red-400">
+            Error: {error.message}
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!user) {
-    return <SignIn onSignIn={() => {}} />
+    return <SignIn onSignIn={() => {}} />;
   }
 
   return (
@@ -329,7 +383,10 @@ export default function StudyHub() {
 
       {/* Mobile Menu Overlay */}
       {showMobileMenu && (
-        <div className="fixed inset-0 bg-black/50 z-50 lg:hidden" onClick={() => setShowMobileMenu(false)}>
+        <div
+          className="fixed inset-0 bg-black/50 z-50 lg:hidden"
+          onClick={() => setShowMobileMenu(false)}
+        >
           <div
             className="absolute top-0 left-0 bottom-0 w-64 bg-white dark:bg-gray-900 shadow-xl p-4 transform transition-transform"
             onClick={(e) => e.stopPropagation()}
@@ -349,7 +406,7 @@ export default function StudyHub() {
               </button>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <button
                 onClick={() => handleTabClick("dashboard")}
                 className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
@@ -358,8 +415,8 @@ export default function StudyHub() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <Home className="h-5 w-5" />
-                <span>Dashboard</span>
+                <Home className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">Dashboard</span>
               </button>
 
               <button
@@ -370,8 +427,8 @@ export default function StudyHub() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <CheckSquare className="h-5 w-5" />
-                <span>Tasks</span>
+                <CheckSquare className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">Tasks</span>
               </button>
 
               <button
@@ -382,8 +439,8 @@ export default function StudyHub() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <Calendar className="h-5 w-5" />
-                <span>Calendar</span>
+                <Calendar className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">Calendar</span>
               </button>
 
               <button
@@ -394,8 +451,8 @@ export default function StudyHub() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <Timer className="h-5 w-5" />
-                <span>Timer</span>
+                <Timer className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">Timer</span>
               </button>
 
               <button
@@ -406,8 +463,8 @@ export default function StudyHub() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <BookOpen className="h-5 w-5" />
-                <span>Create Flashcards</span>
+                <BookOpen className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">Create Flashcards</span>
               </button>
 
               <button
@@ -418,8 +475,8 @@ export default function StudyHub() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <Eye className="h-5 w-5" />
-                <span>View Flashcards</span>
+                <Eye className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">View Flashcards</span>
               </button>
 
               <button
@@ -430,8 +487,8 @@ export default function StudyHub() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <Brain className="h-5 w-5" />
-                <span>AI Tools</span>
+                <Brain className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">AI Tools</span>
               </button>
 
               <button
@@ -442,8 +499,8 @@ export default function StudyHub() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <MessageSquare className="h-5 w-5" />
-                <span>AI Assistant</span>
+                <MessageSquare className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">AI Assistant</span>
               </button>
 
               <button
@@ -454,8 +511,8 @@ export default function StudyHub() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <Users className="h-5 w-5" />
-                <span>Study Rooms</span>
+                <Users className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">Study Rooms</span>
               </button>
 
               <button
@@ -466,8 +523,8 @@ export default function StudyHub() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <BarChart3 className="h-5 w-5" />
-                <span>Analytics</span>
+                <BarChart3 className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">Analytics</span>
               </button>
             </div>
 
@@ -506,9 +563,21 @@ export default function StudyHub() {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   StudyHub Elite
                 </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-[200px]">
+                <p className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-[150px]">
                   {isNewUser ? "Welcome" : "Welcome back"}, {userDisplayName}!
                 </p>
+              </div>
+            </div>
+
+            {/* Clock Display */}
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div className="text-lg font-bold text-gray-800 dark:text-gray-200 font-mono">
+                  {formatTime(currentTime)}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {formatDate(currentTime)}
+                </div>
               </div>
             </div>
 
@@ -519,15 +588,21 @@ export default function StudyHub() {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full">
                     <Flame className="h-4 w-4 text-orange-500" />
-                    <span className="text-sm font-medium">{userStats.streak} day streak</span>
+                    <span className="text-sm font-medium">
+                      {userStats.streak} day streak
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-3 py-1 rounded-full">
                     <Star className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm font-medium">Level {userStats.level}</span>
+                    <span className="text-sm font-medium">
+                      Level {userStats.level}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-3 py-1 rounded-full">
                     <Zap className="h-4 w-4 text-green-500" />
-                    <span className="text-sm font-medium">{userStats.xp} XP</span>
+                    <span className="text-sm font-medium">
+                      {userStats.xp} XP
+                    </span>
                   </div>
                 </div>
               )}
@@ -536,7 +611,9 @@ export default function StudyHub() {
               {isMobile && userStats && (
                 <div className="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-3 py-1 rounded-full">
                   <Star className="h-4 w-4 text-yellow-500" />
-                  <span className="text-sm font-medium">Lvl {userStats.level}</span>
+                  <span className="text-sm font-medium">
+                    Lvl {userStats.level}
+                  </span>
                 </div>
               )}
 
@@ -697,63 +774,6 @@ export default function StudyHub() {
           {renderContent()}
         </div>
       </main>
-
-      {/* Mobile Bottom Navigation */}
-      {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-t border-gray-200/50 dark:border-gray-700/50 z-30">
-          <div className="grid grid-cols-5 gap-1 p-2">
-            <button
-              onClick={() => handleTabClick("dashboard")}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
-                activeTab === "dashboard" ? "bg-blue-100 text-blue-600" : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <Home className="h-5 w-5" />
-              <span className="text-xs">Home</span>
-            </button>
-
-            <button
-              onClick={() => handleTabClick("tasks")}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
-                activeTab === "tasks" ? "bg-blue-100 text-blue-600" : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <CheckSquare className="h-5 w-5" />
-              <span className="text-xs">Tasks</span>
-            </button>
-
-            <button
-              onClick={() => handleTabClick("timer")}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
-                activeTab === "timer" ? "bg-blue-100 text-blue-600" : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <Timer className="h-5 w-5" />
-              <span className="text-xs">Timer</span>
-            </button>
-
-            <button
-              onClick={() => handleTabClick("flashcards")}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
-                activeTab === "flashcards" ? "bg-blue-100 text-blue-600" : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <BookOpen className="h-5 w-5" />
-              <span className="text-xs">Cards</span>
-            </button>
-
-            <button
-              onClick={() => handleTabClick("ai-tools")}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
-                activeTab === "ai-tools" ? "bg-blue-100 text-blue-600" : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <Brain className="h-5 w-5" />
-              <span className="text-xs">AI</span>
-            </button>
-          </div>
-        </div>
-      )}
     </div>
-  )
+  );
 }
