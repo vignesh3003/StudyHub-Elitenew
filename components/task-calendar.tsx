@@ -20,22 +20,58 @@ interface Task {
 }
 
 interface TaskCalendarProps {
-  tasks: Task[]
-  onSelectDate: (date: string) => void
-  onToggleTask: (id: string) => void
-  onAddTask?: (task: Omit<Task, "id" | "completed">) => void
+  user: any
 }
 
-export default function TaskCalendar({ tasks, onSelectDate, onToggleTask, onAddTask }: TaskCalendarProps) {
+export default function TaskCalendar({ user }: TaskCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0])
   const [calendarDays, setCalendarDays] = useState<Array<{ date: Date; isCurrentMonth: boolean }>>([])
-
-  // Add a quick add task feature to the calendar
+  const [tasks, setTasks] = useState<Task[]>([])
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskSubject, setNewTaskSubject] = useState("")
   const [newTaskPriority, setNewTaskPriority] = useState<"low" | "medium" | "high">("medium")
+
+  // Initialize with sample tasks
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0]
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0]
+
+    const sampleTasks: Task[] = [
+      {
+        id: "1",
+        title: "Complete Math Assignment",
+        subject: "Mathematics",
+        priority: "high",
+        completed: false,
+        dueDate: today,
+        description: "Solve problems 1-20 from chapter 5",
+        tags: ["homework", "algebra"],
+      },
+      {
+        id: "2",
+        title: "Read History Chapter",
+        subject: "History",
+        priority: "medium",
+        completed: false,
+        dueDate: tomorrow,
+        description: "Read chapter 12 about World War II",
+        tags: ["reading", "wwii"],
+      },
+      {
+        id: "3",
+        title: "Science Lab Report",
+        subject: "Science",
+        priority: "high",
+        completed: true,
+        dueDate: new Date(Date.now() - 86400000).toISOString().split("T")[0],
+        description: "Write lab report on chemical reactions",
+        tags: ["lab", "chemistry"],
+      },
+    ]
+    setTasks(sampleTasks)
+  }, [])
 
   // Generate calendar days for the current month view
   useEffect(() => {
@@ -90,7 +126,6 @@ export default function TaskCalendar({ tasks, onSelectDate, onToggleTask, onAddT
     const dateString = `${year}-${month}-${day}`
 
     setSelectedDate(dateString)
-    onSelectDate(dateString)
   }
 
   const getTasksForDate = (date: Date) => {
@@ -133,23 +168,24 @@ export default function TaskCalendar({ tasks, onSelectDate, onToggleTask, onAddT
     }
   }
 
-  // Add this function to handle quick task creation
+  const handleToggleTask = (id: string) => {
+    setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task)))
+  }
+
   const handleQuickAddTask = () => {
     if (!newTaskTitle.trim() || !newTaskSubject.trim()) return
 
-    const newTask = {
+    const newTask: Task = {
+      id: Date.now().toString(),
       title: newTaskTitle,
       subject: newTaskSubject,
       priority: newTaskPriority,
       dueDate: selectedDate,
       description: "",
+      completed: false,
     }
 
-    // You'll need to pass an onAddTask prop to this component
-    if (onAddTask) {
-      onAddTask(newTask)
-    }
-
+    setTasks((prev) => [...prev, newTask])
     setNewTaskTitle("")
     setNewTaskSubject("")
     setNewTaskPriority("medium")
@@ -158,6 +194,14 @@ export default function TaskCalendar({ tasks, onSelectDate, onToggleTask, onAddT
 
   // Format month and year for display
   const monthYearString = currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-gray-500">Please sign in to view calendar.</p>
+      </div>
+    )
+  }
 
   return (
     <Card className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-2xl">
@@ -248,15 +292,15 @@ export default function TaskCalendar({ tasks, onSelectDate, onToggleTask, onAddT
                     )}
                   </div>
 
-                  {/* Task indicators - show max 2 on mobile, 3 on larger screens */}
+                  {/* Task indicators */}
                   <div className="mt-1 space-y-1 overflow-hidden max-h-[40px] sm:max-h-[60px]">
-                    {dayTasks.slice(0, window.innerWidth < 640 ? 2 : 3).map((task) => (
+                    {dayTasks.slice(0, 3).map((task) => (
                       <div
                         key={task.id}
                         className="flex items-center gap-1 text-xs truncate"
                         onClick={(e) => {
                           e.stopPropagation()
-                          onToggleTask(task.id)
+                          handleToggleTask(task.id)
                         }}
                       >
                         <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`}></div>
@@ -271,10 +315,8 @@ export default function TaskCalendar({ tasks, onSelectDate, onToggleTask, onAddT
                         </span>
                       </div>
                     ))}
-                    {dayTasks.length > (window.innerWidth < 640 ? 2 : 3) && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        +{dayTasks.length - (window.innerWidth < 640 ? 2 : 3)} more
-                      </div>
+                    {dayTasks.length > 3 && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">+{dayTasks.length - 3} more</div>
                     )}
                   </div>
                 </div>
@@ -380,7 +422,7 @@ export default function TaskCalendar({ tasks, onSelectDate, onToggleTask, onAddT
                         ? "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800"
                         : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"
                     }`}
-                    onClick={() => onToggleTask(task.id)}
+                    onClick={() => handleToggleTask(task.id)}
                   >
                     <CheckCircle className="h-5 w-5" />
                   </Button>

@@ -2,22 +2,24 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app"
 import { getAuth, type Auth } from "firebase/auth"
 import { getFirestore, type Firestore } from "firebase/firestore"
+import { getStorage, type FirebaseStorage } from "firebase/storage"
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDOez9-i-8kx2YPn4wXNTrdHyzrxXJ3JW4",
-  authDomain: "studyhub-elite.firebaseapp.com",
-  projectId: "studyhub-elite",
-  storageBucket: "studyhub-elite.firebasestorage.app",
-  messagingSenderId: "993180920821",
-  appId: "1:993180920821:web:2c56bd040a47e6a5a6cebc",
-  measurementId: "G-C857S3PTJ7",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 }
 
 // Initialize Firebase app
 let app: FirebaseApp
 let auth: Auth
 let db: Firestore
+let storage: FirebaseStorage
 
 try {
   // Initialize app
@@ -26,6 +28,7 @@ try {
   // Initialize services immediately
   auth = getAuth(app)
   db = getFirestore(app)
+  storage = getStorage(app)
 
   console.log("✅ Firebase initialized successfully")
 } catch (error) {
@@ -35,7 +38,7 @@ try {
 
 // Export the initialized instances
 export default app
-export { auth, db }
+export { auth, db, storage }
 
 /**
  * Get Firebase Auth instance
@@ -55,6 +58,16 @@ export function getFirebaseDb(): Firestore {
     throw new Error("Firestore not initialized")
   }
   return db
+}
+
+/**
+ * Get Firebase Storage instance
+ */
+export function getFirebaseStorage(): FirebaseStorage {
+  if (!storage) {
+    throw new Error("Firebase Storage not initialized")
+  }
+  return storage
 }
 
 /**
@@ -114,6 +127,12 @@ export async function initializeFirebase(): Promise<boolean> {
     }
     console.log("✅ Firestore ready")
 
+    // Test storage
+    if (!storage) {
+      throw new Error("Storage not initialized")
+    }
+    console.log("✅ Firebase Storage ready")
+
     console.log("🎉 All Firebase services ready")
     return true
   } catch (error) {
@@ -126,7 +145,7 @@ export async function initializeFirebase(): Promise<boolean> {
  * Check if Firebase is ready to use
  */
 export function isFirebaseReady(): boolean {
-  return !!(app && auth && db)
+  return !!(app && auth && db && storage)
 }
 
 /**

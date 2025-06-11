@@ -231,7 +231,7 @@ export default function SignIn({ onSignIn }: SignInProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="h-12 bg-white/10 border-white/20 text-white placeholder:text-violet-300 focus:border-violet-400"
+                  className="h-12 bg-white/20 border-white/30 text-white placeholder:text-gray-300 focus:border-blue-400 focus:bg-white/25 transition-all duration-200"
                 />
               </div>
               <div className="space-y-3">
@@ -246,7 +246,7 @@ export default function SignIn({ onSignIn }: SignInProps) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
-                    className="h-12 bg-white/10 border-white/20 text-white placeholder:text-violet-300 focus:border-violet-400 pr-12"
+                    className="h-12 bg-white/20 border-white/30 text-white placeholder:text-gray-300 focus:border-blue-400 focus:bg-white/25 transition-all duration-200 pr-12"
                   />
                   <Button
                     type="button"
@@ -264,7 +264,7 @@ export default function SignIn({ onSignIn }: SignInProps) {
                 <Button
                   onClick={() => handleEmailSignIn(false)}
                   disabled={isLoading || !email || !password}
-                  className="w-full h-12 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white font-medium shadow-lg"
+                  className="w-full h-12 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Mail className="h-5 w-5 mr-2" />
                   {isLoading ? "Signing In..." : "Sign In"}
@@ -273,7 +273,7 @@ export default function SignIn({ onSignIn }: SignInProps) {
                   onClick={() => handleEmailSignIn(true)}
                   disabled={isLoading || !email || !password}
                   variant="outline"
-                  className="w-full h-12 border-white/20 text-violet-200 hover:bg-white/10 hover:text-white"
+                  className="w-full h-12 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed border-0"
                 >
                   {isLoading ? "Creating Account..." : "Create Account"}
                 </Button>
@@ -291,7 +291,7 @@ export default function SignIn({ onSignIn }: SignInProps) {
               onClick={handleGoogleSignIn}
               disabled={isLoading}
               variant="outline"
-              className="w-full h-12 border-white/20 text-violet-200 hover:bg-white/10 hover:text-white font-medium"
+              className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed border-0"
             >
               <Chrome className="h-5 w-5 mr-2" />
               {isLoading ? "Connecting..." : "Continue with Google"}

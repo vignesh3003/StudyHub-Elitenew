@@ -24,8 +24,8 @@ interface StudyTip {
 }
 
 class AIService {
-  // Use the Next.js API route
-  private baseUrl = "/api"
+  // Update this to your deployed Python API URL
+  private baseUrl = process.env.NEXT_PUBLIC_AI_API_URL || "/api"
 
   async generateFlashcards(data: {
     question: string

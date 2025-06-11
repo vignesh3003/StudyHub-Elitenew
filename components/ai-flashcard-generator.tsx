@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2, Sparkles, Plus, Upload, FileText, CheckCircle, Wand2, Star, Zap, ImageIcon, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { gamificationService } from "@/lib/gamification-service"
 
 interface GeneratedFlashcard {
   question: string
@@ -19,6 +20,7 @@ interface GeneratedFlashcard {
 }
 
 interface AIFlashcardGeneratorProps {
+  user?: any
   onAddFlashcards: (
     flashcards: Array<{
       question: string
@@ -29,7 +31,7 @@ interface AIFlashcardGeneratorProps {
   ) => void
 }
 
-export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGeneratorProps) {
+export default function AIFlashcardGenerator({ user, onAddFlashcards }: AIFlashcardGeneratorProps) {
   const [activeTab, setActiveTab] = useState("text")
 
   // Text input states
@@ -220,7 +222,7 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
     setIsGenerating(false)
   }
 
-  const addAllFlashcards = () => {
+  const addAllFlashcards = async () => {
     let allCards = []
 
     if (userQuestion && userAnswer) {
@@ -247,6 +249,24 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
       }))
     }
 
+    // Save flashcards to localStorage
+    if (user?.uid) {
+      const existingCards = JSON.parse(localStorage.getItem(`flashcards_${user.uid}`) || "[]")
+      const newCards = allCards.map((card, index) => ({
+        id: `${Date.now()}_${index}`,
+        ...card,
+        tags: [subject.toLowerCase()],
+        createdAt: new Date(),
+        reviewCount: 0,
+      }))
+
+      const updatedCards = [...existingCards, ...newCards]
+      localStorage.setItem(`flashcards_${user.uid}`, JSON.stringify(updatedCards))
+
+      // Record flashcard creation for gamification
+      await gamificationService.recordFlashcardCreated(user.uid, allCards.length)
+    }
+
     onAddFlashcards(allCards)
 
     // Reset form
@@ -254,6 +274,7 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
     setUserAnswer("")
     setSubject("")
     setGeneratedCards([])
+    setSelectedFile(null)
 
     toast({
       title: "🎉 Flashcards Added Successfully!",
@@ -510,10 +531,10 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
               </span>
               <div className="flex items-center gap-4">
                 <Badge variant="secondary" className="bg-sky-100 text-sky-800 px-4 py-3 text-xl font-bold">
-                  ✍️ From Text
+                  ✍️ From {activeTab === "text" ? "Text" : "Image"}
                 </Badge>
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-4 py-3 text-xl font-bold">
-                  {generatedCards.length + 1} total cards
+                  {generatedCards.length + (userQuestion && userAnswer ? 1 : 0)} total cards
                 </Badge>
               </div>
             </CardTitle>
@@ -569,7 +590,7 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
               size="lg"
             >
               <Plus className="h-8 w-8 mr-4" />
-              Add All {generatedCards.length + 1} Flashcards
+              Add All {generatedCards.length + (userQuestion && userAnswer ? 1 : 0)} Flashcards
             </Button>
           </CardContent>
         </Card>
