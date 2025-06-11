@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow users to read and write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow users to manage their own tasks
+    match /tasks/{taskId} {
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.auth.uid != null;
+    }
+    
+    // Allow users to manage their own notes
+    match /notes/{noteId} {
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.auth.uid != null;
+    }
+    
+    // Allow users to manage their own flashcards
+    match /flashcards/{flashcardId} {
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.auth.uid != null;
+    }
+    
+    // Allow users to manage their own study sessions
+    match /study-sessions/{sessionId} {
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.auth.uid != null;
+    }
+    
+    // Gamification collections - FIXED
+    match /userStats/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /userAIFeatures/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /userSocial/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Study rooms - fix collection name and permissions
+    match /studyRooms/{roomId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid != null;
+      allow update: if request.auth != null && 
+        (resource.data.createdBy == request.auth.uid || 
+         request.auth.uid in resource.data.members);
+      allow delete: if request.auth != null && resource.data.createdBy == request.auth.uid;
+    }
+    
+    // Allow read access to public study rooms
+    match /studyRooms/{roomId} {
+      allow read: if resource.data.isPrivate == false;
+    }
+  }
+}

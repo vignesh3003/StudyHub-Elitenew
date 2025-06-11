@@ -1,29 +1,29 @@
 import type React from "react"
 import type { Metadata } from "next"
+import { Inter } from "next/font/google"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { TimerProvider } from "@/contexts/timer-context"
 
+const inter = Inter({ subsets: ["latin"] })
+
 export const metadata: Metadata = {
-  title: "StudyHub Elite",
-  description: "Your AI-Powered Learning Companion",
-  generator: "v0.dev",
+  title: "StudyHub Elite - AI-Powered Learning Platform",
+  description: "Transform your study experience with AI-powered tools, collaborative features, and advanced analytics.",
+    generator: 'v0.dev'
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
+    <html lang="en">
+      <body className={inter.className}>
         <TimerProvider>
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-            {children}
-            <Toaster />
-          </ThemeProvider>
+          {children}
+          <Toaster />
         </TimerProvider>
       </body>
     </html>

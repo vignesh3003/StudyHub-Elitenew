@@ -1,58 +1,76 @@
 // Import Firebase modules
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app"
-import { getAuth, type Auth } from "firebase/auth"
-import { getFirestore, type Firestore } from "firebase/firestore"
+import { getAuth, connectAuthEmulator, type Auth } from "firebase/auth"
+import { getFirestore, connectFirestoreEmulator, type Firestore } from "firebase/firestore"
+import { getStorage, type FirebaseStorage } from "firebase/storage"
 
-// Hardcoded Firebase configuration (since env vars aren't working in production)
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDOez9-i-8kx2YPn4wXNTrdHyzrxXJ3JW4",
-  authDomain: "studyhub-elite.firebaseapp.com",
-  projectId: "studyhub-elite",
-  storageBucket: "studyhub-elite.firebasestorage.app",
-  messagingSenderId: "993180920821",
-  appId: "1:993180920821:web:2c56bd040a47e6a5a6cebc",
-  measurementId: "G-C857S3PTJ7",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 }
 
 // Initialize Firebase app
-let app: FirebaseApp | null = null
-let auth: Auth | null = null
-let db: Firestore | null = null
-let initializationError: string | null = null
+let app: FirebaseApp
+let auth: Auth
+let db: Firestore
+let storage: FirebaseStorage
 
 try {
-  console.log("🚀 Initializing Firebase with hardcoded config...")
-  console.log("Project ID:", firebaseConfig.projectId)
-  console.log("Auth Domain:", firebaseConfig.authDomain)
-
   // Initialize app
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
-  console.log("✅ Firebase app initialized")
 
-  // Initialize services
+  // Initialize services immediately
   auth = getAuth(app)
-  console.log("✅ Firebase Auth initialized")
-
   db = getFirestore(app)
-  console.log("✅ Firestore initialized")
+  storage = getStorage(app)
 
-  console.log("🎉 Firebase initialization completed successfully")
-} catch (error: any) {
-  console.error("💥 Firebase initialization failed:", error)
-  initializationError = error.message
+  console.log("✅ Firebase initialized successfully")
+} catch (error) {
+  console.error("❌ Failed to initialize Firebase:", error)
+  throw error
+}
+
+// Initialize Firebase services
+export const authExport = auth
+export const dbExport = db
+
+// Only connect to emulators in development and if not already connected
+if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
+  try {
+    // Check if already connected to avoid multiple connections
+    if (!auth.settings.appCheckTokenProvider) {
+      connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true })
+    }
+  } catch (error) {
+    // Emulator connection errors are non-critical in production builds
+    console.log("Auth emulator connection skipped")
+  }
+
+  try {
+    // Check if already connected to avoid multiple connections
+    if (!db._delegate._databaseId.projectId.includes("demo-")) {
+      connectFirestoreEmulator(db, "localhost", 8080)
+    }
+  } catch (error) {
+    // Emulator connection errors are non-critical in production builds
+    console.log("Firestore emulator connection skipped")
+  }
 }
 
 // Export the initialized instances
 export default app
-export { auth, db, initializationError }
+export { authExport as auth, dbExport as db, storage }
 
 /**
  * Get Firebase Auth instance
  */
 export function getFirebaseAuth(): Auth {
-  if (initializationError) {
-    throw new Error(`Firebase not initialized: ${initializationError}`)
-  }
   if (!auth) {
     throw new Error("Firebase Auth not initialized")
   }
@@ -63,9 +81,6 @@ export function getFirebaseAuth(): Auth {
  * Get Firestore instance
  */
 export function getFirebaseDb(): Firestore {
-  if (initializationError) {
-    throw new Error(`Firebase not initialized: ${initializationError}`)
-  }
   if (!db) {
     throw new Error("Firestore not initialized")
   }
@@ -73,13 +88,19 @@ export function getFirebaseDb(): Firestore {
 }
 
 /**
+ * Get Firebase Storage instance
+ */
+export function getFirebaseStorage(): FirebaseStorage {
+  if (!storage) {
+    throw new Error("Firebase Storage not initialized")
+  }
+  return storage
+}
+
+/**
  * Get Google Auth Provider
  */
 export async function getGoogleAuthProvider() {
-  if (initializationError) {
-    throw new Error(`Firebase not initialized: ${initializationError}`)
-  }
-
   try {
     const { GoogleAuthProvider } = await import("firebase/auth")
     const provider = new GoogleAuthProvider()
@@ -97,10 +118,6 @@ export async function getGoogleAuthProvider() {
  * Get Firebase Auth functions
  */
 export async function getAuthFunctions() {
-  if (initializationError) {
-    throw new Error(`Firebase not initialized: ${initializationError}`)
-  }
-
   try {
     const authModule = await import("firebase/auth")
     return {
@@ -119,16 +136,11 @@ export async function getAuthFunctions() {
 }
 
 /**
- * Initialize Firebase services
+ * Initialize Firebase services (simplified version)
  */
 export async function initializeFirebase(): Promise<boolean> {
-  if (initializationError) {
-    console.error("❌ Firebase initialization failed previously:", initializationError)
-    return false
-  }
-
   try {
-    console.log("🔍 Checking Firebase services...")
+    console.log("🚀 Firebase services already initialized")
 
     // Test auth
     if (!auth) {
@@ -142,6 +154,12 @@ export async function initializeFirebase(): Promise<boolean> {
     }
     console.log("✅ Firestore ready")
 
+    // Test storage
+    if (!storage) {
+      throw new Error("Storage not initialized")
+    }
+    console.log("✅ Firebase Storage ready")
+
     console.log("🎉 All Firebase services ready")
     return true
   } catch (error) {
@@ -154,7 +172,7 @@ export async function initializeFirebase(): Promise<boolean> {
  * Check if Firebase is ready to use
  */
 export function isFirebaseReady(): boolean {
-  return !!(app && auth && db && !initializationError)
+  return !!(app && auth && db && storage)
 }
 
 /**
@@ -162,11 +180,6 @@ export function isFirebaseReady(): boolean {
  */
 export async function waitForFirebase(timeout = 10000): Promise<boolean> {
   console.log("⏳ Checking if Firebase is ready...")
-
-  if (initializationError) {
-    console.error("❌ Firebase initialization failed:", initializationError)
-    return false
-  }
 
   try {
     const success = await initializeFirebase()
@@ -185,20 +198,6 @@ export async function waitForFirebase(timeout = 10000): Promise<boolean> {
  * Force reinitialize Firebase services
  */
 export async function reinitializeFirebase(): Promise<boolean> {
-  console.log("🔄 Checking Firebase services...")
+  console.log("🔄 Firebase services are already initialized")
   return await initializeFirebase()
-}
-
-// Export isDemo as false since we're not using demo mode
-export const isDemo = false
-
-// Export initialization status for debugging
-export function getFirebaseStatus() {
-  return {
-    isInitialized: !!app,
-    hasAuth: !!auth,
-    hasDb: !!db,
-    error: initializationError,
-    isReady: isFirebaseReady(),
-  }
 }

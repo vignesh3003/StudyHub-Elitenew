@@ -207,14 +207,14 @@ export default function PomodoroTimer() {
               onClick={() => setShowSettings(!showSettings)}
               variant="outline"
               size="lg"
-              className={`px-4 sm:px-6 py-4 text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 ${
+              className={`px-6 py-4 text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 ${
                 mode === "study"
                   ? "border-blue-300 text-blue-600 hover:bg-blue-50"
                   : "border-orange-300 text-orange-600 hover:bg-orange-50"
               }`}
             >
-              <Settings className="h-5 w-5 sm:mr-2" />
-              <span className="hidden sm:inline">Settings</span>
+              <Settings className="h-5 w-5 mr-2" />
+              Settings
             </Button>
           </div>
 

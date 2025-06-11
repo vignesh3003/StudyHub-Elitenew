@@ -1,30 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { Buffer } from "buffer"
-import type { File } from "formdata-node"
 
 // Use environment variable for API key
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 
 export async function POST(request: NextRequest) {
   console.log("🚀 AI Chat API Route called!")
+  console.log("Headers:", Object.fromEntries(request.headers.entries()))
+  console.log("GEMINI_API_KEY exists:", !!GEMINI_API_KEY)
 
   try {
     const headers = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
-    }
-
-    // Check if API key is properly configured
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === process.env.NEXT_PUBLIC_AI_API_URL) {
-      console.error("❌ GEMINI_API_KEY not properly configured or is the same as NEXT_PUBLIC_AI_API_URL")
-      return NextResponse.json(
-        {
-          success: false,
-          error: "API key not configured correctly. Please check your environment variables.",
-        },
-        { status: 500, headers },
-      )
     }
 
     if (!GEMINI_API_KEY) {
@@ -48,13 +37,13 @@ export async function POST(request: NextRequest) {
       const formData = await request.formData()
       const message = formData.get("message") as string
       const context = formData.get("context") as string
-      const file = formData.get("image") as File
 
       data = {
         message: message || "Please analyze this image and provide study notes",
         context: context ? JSON.parse(context) : {},
       }
 
+      const file = formData.get("image") as File
       if (file && file.size > 0) {
         // Convert file to base64
         const bytes = await file.arrayBuffer()
@@ -68,13 +57,13 @@ export async function POST(request: NextRequest) {
       console.log("📝 Received data:", data)
     }
 
-    const { message, context } = data
+    const { message, context, messages, isStudyPlanRequest } = data
 
-    if (!message && !imageData) {
+    if (!message && !imageData && !messages) {
       return NextResponse.json(
         {
           success: false,
-          error: "Message or image is required",
+          error: "Message, messages, or image is required",
         },
         { status: 400, headers },
       )
@@ -82,7 +71,15 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ Processing request with Gemini...")
 
-    // Create different prompts based on whether we have an image or not
+    // Check if the user is asking for a study plan
+    const isStudyPlan =
+      isStudyPlanRequest ||
+      (message &&
+        (message.toLowerCase().includes("study plan") ||
+          message.toLowerCase().includes("create plan") ||
+          message.toLowerCase().includes("schedule") ||
+          message.toLowerCase().includes("plan my study")))
+
     let prompt: string
     let requestBody: any
 
@@ -147,8 +144,75 @@ Use clear headings, bullet points, and emojis as shown above. Keep explanations 
           },
         ],
       }
+    } else if (isStudyPlan) {
+      // Study plan generation prompt
+      const userMessage = message || (messages && messages[messages.length - 1]?.content) || ""
+
+      prompt = `You are an expert study planner. Create a detailed, actionable study plan based on the student's request.
+
+STUDENT CONTEXT:
+- Total tasks: ${context?.tasks || 0}
+- Completed tasks: ${context?.completedTasks || 0}
+- Study hours: ${context?.studyHours || 0}
+- Subjects: ${context?.subjects?.join(", ") || "General"}
+- Recent grades: ${context?.grades?.map((g: any) => `${g.subject}: ${g.percentage}%`).join(", ") || "None"}
+
+Student's request: ${userMessage}
+
+Create a comprehensive study plan using this EXACT JSON format:
+
+\`\`\`json
+{
+  "studyPlan": {
+    "title": "[Study Plan Title]",
+    "description": "[Brief description of the plan]",
+    "duration": "[e.g., 2 weeks, 1 month]",
+    "totalHours": "[estimated total study hours]",
+    "tasks": [
+      {
+        "title": "[Task title]",
+        "description": "[Detailed description]",
+        "subject": "[Subject name]",
+        "priority": "high|medium|low",
+        "startDate": "YYYY-MM-DD",
+        "endDate": "YYYY-MM-DD",
+        "estimatedHours": "[hours needed]",
+        "tags": ["tag1", "tag2"]
+      }
+    ],
+    "tips": [
+      "[Study tip 1]",
+      "[Study tip 2]",
+      "[Study tip 3]"
+    ]
+  }
+}
+\`\`\`
+
+Make sure to:
+1. Break down the study goal into specific, actionable tasks
+2. Set realistic start and end dates for each task
+3. Assign appropriate priorities
+4. Include relevant subjects and tags
+5. Provide practical study tips
+
+The plan should be comprehensive and immediately actionable.`
+
+      requestBody = {
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      }
     } else {
-      // Text-only prompt (existing functionality)
+      // Regular chat prompt
+      const userMessage = message || (messages && messages[messages.length - 1]?.content) || ""
+
       prompt = `You are a helpful AI study assistant. Here's the student's current progress:
 - Total tasks: ${context?.tasks || 0}
 - Completed tasks: ${context?.completedTasks || 0}
@@ -156,7 +220,7 @@ Use clear headings, bullet points, and emojis as shown above. Keep explanations 
 - Subjects: ${context?.subjects?.join(", ") || "None"}
 - Recent grades: ${context?.grades?.map((g: any) => `${g.subject}: ${g.percentage}%`).join(", ") || "None"}
 
-Student's question: ${message}
+Student's question: ${userMessage}
 
 Please provide helpful, encouraging, and practical study advice. Keep your response concise but informative (2-3 paragraphs max). Focus on actionable tips and motivation.`
 
@@ -175,7 +239,7 @@ Please provide helpful, encouraging, and practical study advice. Keep your respo
 
     console.log("🤖 Calling Gemini API...")
 
-    // Call Gemini API with vision support
+    // Call Gemini API
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -205,50 +269,90 @@ Please provide helpful, encouraging, and practical study advice. Keep your respo
       throw new Error("No content generated from Gemini")
     }
 
+    // Try to extract study plan JSON if it's a study plan request
+    let studyPlan = null
+    let formattedResponse = generatedText
+
+    if (isStudyPlan) {
+      try {
+        const jsonMatch = generatedText.match(/```json\n([\s\S]*?)\n```/)
+        if (jsonMatch) {
+          studyPlan = JSON.parse(jsonMatch[1])
+
+          // Format the study plan as readable text
+          if (studyPlan?.studyPlan) {
+            const plan = studyPlan.studyPlan
+            formattedResponse = `# 📚 ${plan.title || "Your Study Plan"}
+
+## 📋 Overview
+${plan.description || "Personalized study plan created for your goals"}
+
+**Duration:** ${plan.duration || "Flexible timeline"}
+**Estimated Total Hours:** ${plan.totalHours || "As needed"}
+
+## 🎯 Study Tasks
+
+${
+  plan.tasks
+    ?.map(
+      (task: any, index: number) => `
+### ${index + 1}. ${task.title}
+**Subject:** ${task.subject}
+**Priority:** ${task.priority?.toUpperCase()}
+**Timeline:** ${task.startDate} to ${task.endDate}
+**Estimated Hours:** ${task.estimatedHours}
+
+${task.description}
+
+**Tags:** ${task.tags?.join(", ") || "General"}
+`,
+    )
+    .join("\n") || "No specific tasks defined"
+}
+
+## 💡 Study Tips
+${plan.tips?.map((tip: string, index: number) => `${index + 1}. ${tip}`).join("\n") || "Stay consistent and focused!"}
+
+## 🎉 Next Steps
+1. Review this plan and adjust as needed
+2. Add these tasks to your task manager
+3. Set up reminders for important deadlines
+4. Track your progress regularly
+
+Good luck with your studies! 🚀`
+          }
+        }
+      } catch (error) {
+        console.log("Could not parse study plan JSON, returning as regular text")
+      }
+    }
+
     console.log(`🎉 Returning AI response`)
 
     return NextResponse.json(
       {
         success: true,
-        response: generatedText,
+        response: formattedResponse,
         hasImage: !!imageData,
+        studyPlan: studyPlan,
+        isStudyPlan: isStudyPlan,
       },
       { headers },
     )
   } catch (error: any) {
-    console.error("💥 API Error:", error)
-
-    const fallbackResponse = imageData
-      ? `I'm having trouble analyzing the image right now. Here are some general study tips for image-based content:
-
-📚 **When studying from images/pages**:
-- Take clear, well-lit photos of your materials
-- Focus on key diagrams, formulas, and highlighted text
-- Create your own summary notes from the visual content
-- Practice redrawing important diagrams from memory
-
-🎯 **For better image analysis**:
-- Ensure text is clearly visible and not blurry
-- Include the full context (complete sentences/paragraphs)
-- Upload images of individual topics rather than entire pages
-
-Please try uploading the image again or ask me specific questions about your study material!`
-      : `I'm having trouble connecting right now, but here are some general study tips:
-
-📚 **Study Techniques**: Try the Pomodoro technique (25 min study, 5 min break), active recall (test yourself without notes), and spaced repetition.
-
-🎯 **Stay Organized**: Break large tasks into smaller chunks, use a study schedule, and prioritize based on deadlines and difficulty.
-
-💪 **Stay Motivated**: Set small, achievable goals, reward yourself for progress, and remember that consistency beats perfection!
-
-Feel free to ask me again - I'll try to help with more specific advice!`
+    console.error("💥 Detailed API Error:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    })
 
     return NextResponse.json(
       {
-        success: true,
-        response: fallbackResponse,
+        success: false,
+        error: `API Error: ${error.message}`,
+        details: error.stack,
       },
-      { status: 200 },
+      { status: 500, headers },
     )
   }
 }

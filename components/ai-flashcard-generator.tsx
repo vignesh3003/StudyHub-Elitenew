@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2, Sparkles, Plus, Upload, FileText, CheckCircle, Wand2, Star, Zap, ImageIcon, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { gamificationService } from "@/lib/gamification-service"
 
 interface GeneratedFlashcard {
   question: string
@@ -19,6 +20,7 @@ interface GeneratedFlashcard {
 }
 
 interface AIFlashcardGeneratorProps {
+  user?: any
   onAddFlashcards: (
     flashcards: Array<{
       question: string
@@ -29,7 +31,7 @@ interface AIFlashcardGeneratorProps {
   ) => void
 }
 
-export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGeneratorProps) {
+export default function AIFlashcardGenerator({ user, onAddFlashcards }: AIFlashcardGeneratorProps) {
   const [activeTab, setActiveTab] = useState("text")
 
   // Text input states
@@ -220,7 +222,7 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
     setIsGenerating(false)
   }
 
-  const addAllFlashcards = () => {
+  const addAllFlashcards = async () => {
     let allCards = []
 
     if (userQuestion && userAnswer) {
@@ -247,6 +249,31 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
       }))
     }
 
+    // Save flashcards to localStorage
+    if (user?.uid) {
+      const existingCards = JSON.parse(localStorage.getItem(`flashcards_${user.uid}`) || "[]")
+      const newCards = allCards.map((card, index) => ({
+        id: `${Date.now()}_${index}`,
+        ...card,
+        tags: [subject.toLowerCase()],
+        createdAt: new Date(),
+        reviewCount: 0,
+      }))
+
+      const updatedCards = [...existingCards, ...newCards]
+      localStorage.setItem(`flashcards_${user.uid}`, JSON.stringify(updatedCards))
+
+      // Record flashcard creation for gamification - FIXED VERSION
+      if (user?.uid) {
+        console.log(`🎯 Recording ${allCards.length} flashcards created for user ${user.uid}`)
+        await gamificationService.recordFlashcardCreated(user.uid, allCards.length)
+
+        // Force refresh user stats to update achievements immediately
+        const updatedStats = await gamificationService.getUserStats(user.uid)
+        console.log("📊 Updated stats after flashcard creation:", updatedStats)
+      }
+    }
+
     onAddFlashcards(allCards)
 
     // Reset form
@@ -254,6 +281,7 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
     setUserAnswer("")
     setSubject("")
     setGeneratedCards([])
+    setSelectedFile(null)
 
     toast({
       title: "🎉 Flashcards Added Successfully!",
@@ -262,58 +290,58 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
   }
 
   return (
-    <div className="space-y-6 sm:space-y-12 px-2 sm:px-0">
-      {/* Mobile-Optimized Main Generator Card */}
-      <Card className="relative overflow-hidden bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50 dark:from-sky-900/20 dark:via-blue-900/20 dark:to-cyan-900/20 border-sky-200/50 dark:border-sky-700/50 shadow-2xl">
+    <div className="space-y-12">
+      {/* Ultra Modern Main Generator Card */}
+      <Card className="relative overflow-hidden bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50 border-sky-200/50 shadow-2xl">
         <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-purple-500/5 to-indigo-500/5"></div>
 
-        {/* Floating decorative elements - hidden on mobile */}
-        <div className="absolute top-10 right-10 w-20 h-20 bg-gradient-to-r from-sky-400/20 to-blue-400/20 rounded-full blur-xl animate-pulse hidden sm:block"></div>
-        <div className="absolute bottom-10 left-10 w-16 h-16 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-full blur-lg animate-pulse delay-1000 hidden sm:block"></div>
+        {/* Floating decorative elements */}
+        <div className="absolute top-10 right-10 w-20 h-20 bg-gradient-to-r from-sky-400/20 to-blue-400/20 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute bottom-10 left-10 w-16 h-16 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-full blur-lg animate-pulse delay-1000"></div>
 
-        <CardHeader className="relative pb-4 sm:pb-8 p-4 sm:p-6">
-          <CardTitle className="text-2xl sm:text-4xl flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
+        <CardHeader className="relative pb-8">
+          <CardTitle className="text-4xl flex items-center gap-6">
             <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl sm:rounded-3xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-300"></div>
-              <div className="relative bg-gradient-to-r from-sky-500 to-blue-500 p-3 sm:p-5 rounded-2xl sm:rounded-3xl shadow-2xl group-hover:scale-105 transition-transform duration-300">
-                <Sparkles className="h-8 w-8 sm:h-12 sm:w-12 text-white" />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-300"></div>
+              <div className="relative bg-gradient-to-r from-sky-500 to-blue-500 p-5 rounded-3xl shadow-2xl group-hover:scale-105 transition-transform duration-300">
+                <Sparkles className="h-12 w-12 text-white" />
               </div>
             </div>
-            <div className="text-center sm:text-left">
-              <span className="bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent font-bold block">
+            <div>
+              <span className="bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent font-bold">
                 AI Flashcard Generator
               </span>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 mt-2 sm:mt-3">
-                <Badge className="bg-gradient-to-r from-sky-500 to-blue-500 text-white px-2 sm:px-4 py-1 sm:py-2 text-sm sm:text-lg font-bold">
-                  <Star className="h-3 w-3 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+              <div className="flex items-center gap-3 mt-3">
+                <Badge className="bg-gradient-to-r from-sky-500 to-blue-500 text-white px-4 py-2 text-lg font-bold">
+                  <Star className="h-5 w-5 mr-2" />
                   Smart Learning
                 </Badge>
-                <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-2 sm:px-4 py-1 sm:py-2 text-sm sm:text-lg font-bold">
-                  <Zap className="h-3 w-3 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+                <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 text-lg font-bold">
+                  <Zap className="h-5 w-5 mr-2" />
                   Instant
                 </Badge>
               </div>
             </div>
           </CardTitle>
-          <p className="text-purple-600/80 dark:text-purple-400/80 text-base sm:text-2xl mt-2 sm:mt-4 font-medium text-center sm:text-left">
-            Transform your study materials into powerful flashcards with AI ✨
+          <p className="text-purple-600/80 text-2xl mt-4 font-medium">
+            Transform your study materials into powerful flashcards with cutting-edge AI technology
           </p>
         </CardHeader>
-        <CardContent className="relative p-4 sm:p-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 sm:space-y-8">
-            {/* Mobile-Optimized Tab Navigation */}
-            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-2 shadow-2xl border border-purple-200/50 dark:border-purple-700/50">
-              <TabsList className="grid w-full grid-cols-2 gap-2 bg-transparent relative">
+        <CardContent className="relative">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+            {/* Ultra Enhanced Tab Navigation */}
+            <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-2 sm:p-4 shadow-2xl border border-purple-200/50">
+              <TabsList className="grid w-full grid-cols-2 gap-2 sm:gap-4 bg-transparent relative">
                 <TabsTrigger
                   value="text"
-                  className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-sky-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-xl py-3 sm:py-6 px-3 sm:px-8 transition-all duration-300 hover:scale-105 font-bold text-sm sm:text-lg"
+                  className="flex items-center gap-2 sm:gap-4 data-[state=active]:bg-gradient-to-r data-[state=active]:from-sky-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-2xl py-3 sm:py-6 px-4 sm:px-8 transition-all duration-300 hover:scale-105 font-bold text-sm sm:text-lg"
                 >
                   <FileText className="h-4 w-4 sm:h-6 sm:w-6" />
                   <span>Text Input</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="file"
-                  className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white rounded-xl py-3 sm:py-6 px-3 sm:px-8 transition-all duration-300 hover:scale-105 font-bold text-sm sm:text-lg"
+                  className="flex items-center gap-2 sm:gap-4 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white rounded-2xl py-3 sm:py-6 px-4 sm:px-8 transition-all duration-300 hover:scale-105 font-bold text-sm sm:text-lg"
                 >
                   <Upload className="h-4 w-4 sm:h-6 sm:w-6" />
                   <span>File Upload</span>
@@ -321,30 +349,30 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
               </TabsList>
             </div>
 
-            {/* Mobile-Optimized Common Settings */}
-            <div className="grid grid-cols-1 gap-4 sm:gap-8">
+            {/* Enhanced Common Settings */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
               <div className="space-y-2 sm:space-y-4">
-                <label className="text-lg sm:text-2xl font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                <label className="text-xl sm:text-2xl font-bold text-blue-700 flex items-center gap-2">
                   <span className="w-2 h-2 sm:w-3 sm:h-3 bg-purple-500 rounded-full"></span>
                   Subject *
                 </label>
                 <Input
-                  placeholder="e.g., Biology, Math, History"
+                  placeholder="e.g., Biology, Mathematics, History"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="h-12 sm:h-16 text-base sm:text-xl border-sky-200 dark:border-sky-700 focus:border-blue-400 bg-white/90 dark:bg-gray-800/90 rounded-xl sm:rounded-2xl shadow-lg"
+                  className="h-12 sm:h-16 text-base sm:text-xl border-sky-200 focus:border-blue-400 bg-white/90 rounded-2xl shadow-lg"
                 />
               </div>
               <div className="space-y-2 sm:space-y-4">
-                <label className="text-lg sm:text-2xl font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                <label className="text-xl sm:text-2xl font-bold text-blue-700 flex items-center gap-2">
                   <span className="w-2 h-2 sm:w-3 sm:h-3 bg-purple-500 rounded-full"></span>
                   Difficulty Level
                 </label>
                 <Select value={difficulty} onValueChange={(value: "easy" | "medium" | "hard") => setDifficulty(value)}>
-                  <SelectTrigger className="h-12 sm:h-16 text-base sm:text-xl border-sky-200 dark:border-sky-700 focus:border-blue-400 bg-white/90 dark:bg-gray-800/90 rounded-xl sm:rounded-2xl shadow-lg">
+                  <SelectTrigger className="h-12 sm:h-16 text-base sm:text-xl border-sky-200 focus:border-blue-400 bg-white/90 rounded-2xl shadow-lg">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-purple-200/50 dark:border-purple-700/50 rounded-xl sm:rounded-2xl">
+                  <SelectContent className="bg-white/95 backdrop-blur-sm border border-purple-200/50 rounded-2xl">
                     <SelectItem value="easy" className="text-base sm:text-lg py-2 sm:py-3">
                       🟢 Easy
                     </SelectItem>
@@ -359,45 +387,45 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
               </div>
             </div>
 
-            <TabsContent value="text" className="space-y-6 sm:space-y-8">
-              <div className="space-y-4 sm:space-y-6">
-                <label className="text-lg sm:text-2xl font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2">
-                  <span className="w-2 h-2 sm:w-3 sm:h-3 bg-purple-500 rounded-full"></span>
+            <TabsContent value="text" className="space-y-8">
+              <div className="space-y-6">
+                <label className="text-2xl font-bold text-blue-700 flex items-center gap-2">
+                  <span className="w-3 h-3 bg-purple-500 rounded-full"></span>
                   Your Question *
                 </label>
                 <Textarea
                   placeholder="Enter your flashcard question..."
                   value={userQuestion}
                   onChange={(e) => setUserQuestion(e.target.value)}
-                  rows={4}
-                  className="text-base sm:text-xl border-sky-200 dark:border-sky-700 focus:border-blue-400 bg-white/90 dark:bg-gray-800/90 rounded-xl sm:rounded-2xl shadow-lg resize-none"
+                  rows={5}
+                  className="text-xl border-sky-200 focus:border-blue-400 bg-white/90 rounded-2xl shadow-lg"
                 />
               </div>
 
-              <div className="space-y-4 sm:space-y-6">
-                <label className="text-lg sm:text-2xl font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2">
-                  <span className="w-2 h-2 sm:w-3 sm:h-3 bg-purple-500 rounded-full"></span>
+              <div className="space-y-6">
+                <label className="text-2xl font-bold text-blue-700 flex items-center gap-2">
+                  <span className="w-3 h-3 bg-purple-500 rounded-full"></span>
                   Your Answer *
                 </label>
                 <Textarea
                   placeholder="Enter the answer to your question..."
                   value={userAnswer}
                   onChange={(e) => setUserAnswer(e.target.value)}
-                  rows={4}
-                  className="text-base sm:text-xl border-sky-200 dark:border-sky-700 focus:border-blue-400 bg-white/90 dark:bg-gray-800/90 rounded-xl sm:rounded-2xl shadow-lg resize-none"
+                  rows={5}
+                  className="text-xl border-sky-200 focus:border-blue-400 bg-white/90 rounded-2xl shadow-lg"
                 />
               </div>
 
               <Button
                 onClick={generateFromText}
                 disabled={isGenerating || !userQuestion || !userAnswer || !subject}
-                className="w-full h-14 sm:h-20 text-lg sm:text-2xl font-bold bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 rounded-xl sm:rounded-2xl"
+                className="w-full h-14 sm:h-20 text-lg sm:text-2xl font-bold bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 rounded-2xl"
                 size="lg"
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 mr-2 sm:mr-4 animate-spin" />
-                    Generating...
+                    Generating Flashcards...
                   </>
                 ) : (
                   <>
@@ -408,13 +436,13 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
               </Button>
             </TabsContent>
 
-            <TabsContent value="file" className="space-y-6 sm:space-y-8">
-              <div className="space-y-6 sm:space-y-8">
+            <TabsContent value="file" className="space-y-8">
+              <div className="space-y-8">
                 <div
-                  className={`border-4 border-dashed rounded-2xl sm:rounded-3xl p-6 sm:p-8 text-center transition-colors duration-300 ${
+                  className={`border-4 border-dashed rounded-3xl p-8 text-center transition-colors duration-300 ${
                     dragActive
-                      ? "border-purple-400 bg-purple-50/60 dark:bg-purple-900/20"
-                      : "border-purple-300 dark:border-purple-700 hover:border-purple-400 bg-white/60 dark:bg-gray-800/60"
+                      ? "border-purple-400 bg-purple-50/60"
+                      : "border-purple-300 hover:border-purple-400 bg-white/60"
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -423,7 +451,7 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
                 >
                   {selectedFile ? (
                     <div className="flex flex-col items-center">
-                      <div className="relative w-full max-w-md h-48 sm:h-64 mb-4 sm:mb-6 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden">
+                      <div className="relative w-full max-w-md h-64 mb-6 bg-gray-100 rounded-xl overflow-hidden">
                         <img
                           src={URL.createObjectURL(selectedFile) || "/placeholder.svg"}
                           alt="Preview"
@@ -438,24 +466,18 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="text-purple-700 dark:text-purple-400 font-bold text-lg sm:text-xl mb-2">
-                        {selectedFile.name}
-                      </div>
-                      <p className="text-purple-500 dark:text-purple-400 text-sm mb-4">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
+                      <div className="text-purple-700 font-bold text-xl mb-2">{selectedFile.name}</div>
+                      <p className="text-purple-500 text-sm mb-4">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
                     </div>
                   ) : (
                     <>
-                      <div className="relative inline-block mb-6 sm:mb-8">
+                      <div className="relative inline-block mb-8">
                         <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
-                        <Upload className="relative h-16 w-16 sm:h-24 sm:w-24 mx-auto text-purple-400" />
+                        <Upload className="relative h-24 w-24 mx-auto text-purple-400" />
                       </div>
-                      <p className="text-purple-700 dark:text-purple-400 font-bold text-xl sm:text-3xl mb-4 sm:mb-6">
-                        Upload Study Material
-                      </p>
-                      <p className="text-purple-500 dark:text-purple-400 text-base sm:text-xl max-w-lg mx-auto leading-relaxed mb-4 sm:mb-6">
-                        Drag and drop an image of your notes, textbook page, or study material
+                      <p className="text-purple-700 font-bold text-3xl mb-6">Upload Study Material</p>
+                      <p className="text-purple-500 text-xl max-w-lg mx-auto leading-relaxed mb-6">
+                        Drag and drop an image of your notes, textbook page, or study material to generate flashcards
                       </p>
                       <input
                         type="file"
@@ -467,7 +489,7 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
                       <Button
                         variant="outline"
                         onClick={() => document.getElementById("flashcard-file-upload")?.click()}
-                        className="border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-12 px-6 text-base font-medium"
+                        className="border-blue-300 text-blue-600 hover:bg-blue-50"
                       >
                         <ImageIcon className="h-5 w-5 mr-2" />
                         Choose Image
@@ -479,7 +501,7 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
                 <Button
                   onClick={generateFromFile}
                   disabled={isGenerating || !selectedFile || !subject}
-                  className="w-full h-14 sm:h-20 text-lg sm:text-2xl font-bold bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 rounded-xl sm:rounded-2xl"
+                  className="w-full h-14 sm:h-20 text-lg sm:text-2xl font-bold bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 rounded-2xl"
                   size="lg"
                 >
                   {isGenerating ? (
@@ -490,7 +512,7 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
                   ) : (
                     <>
                       <Wand2 className="h-6 w-6 sm:h-8 sm:w-8 mr-2 sm:mr-4" />
-                      Generate from Image
+                      Generate Flashcards from Image
                     </>
                   )}
                 </Button>
@@ -500,53 +522,45 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
         </CardContent>
       </Card>
 
-      {/* Mobile-Optimized Generated Cards Display */}
+      {/* Ultra Enhanced Generated Cards Display */}
       {generatedCards.length > 0 && (
-        <Card className="bg-gradient-to-br from-sky-50 to-cyan-50 dark:from-sky-900/20 dark:to-cyan-900/20 border-sky-200/50 dark:border-sky-700/50 shadow-2xl relative overflow-hidden">
+        <Card className="bg-gradient-to-br from-sky-50 to-cyan-50 border-sky-200/50 shadow-2xl relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5"></div>
-          <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-gradient-to-br from-emerald-400/20 to-teal-400/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-emerald-400/20 to-teal-400/20 rounded-full blur-3xl"></div>
 
-          <CardHeader className="relative p-4 sm:p-6">
-            <CardTitle className="text-xl sm:text-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
-              <span className="flex items-center gap-3 sm:gap-4 text-sky-700 dark:text-sky-400">
-                <div className="p-3 sm:p-4 bg-sky-500 rounded-xl sm:rounded-2xl shadow-2xl">
-                  <CheckCircle className="h-6 w-6 sm:h-10 sm:w-10 text-white" />
+          <CardHeader className="relative">
+            <CardTitle className="text-3xl flex items-center justify-between">
+              <span className="flex items-center gap-4 text-sky-700">
+                <div className="p-4 bg-sky-500 rounded-2xl shadow-2xl">
+                  <CheckCircle className="h-10 w-10 text-white" />
                 </div>
                 Generated Flashcards
               </span>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                <Badge
-                  variant="secondary"
-                  className="bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-400 px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-xl font-bold"
-                >
-                  ✍️ From Text
+              <div className="flex items-center gap-4">
+                <Badge variant="secondary" className="bg-sky-100 text-sky-800 px-4 py-3 text-xl font-bold">
+                  ✍️ From {activeTab === "text" ? "Text" : "Image"}
                 </Badge>
-                <Badge
-                  variant="secondary"
-                  className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-400 px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-xl font-bold"
-                >
-                  {generatedCards.length + 1} total cards
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-4 py-3 text-xl font-bold">
+                  {generatedCards.length + (userQuestion && userAnswer ? 1 : 0)} total cards
                 </Badge>
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6 sm:space-y-8 relative p-4 sm:p-6">
+          <CardContent className="space-y-8 relative">
             {/* Original card */}
             {userQuestion && userAnswer && (
-              <div className="p-4 sm:p-8 bg-blue-50 dark:bg-blue-900/20 rounded-2xl sm:rounded-3xl border-2 border-blue-200 dark:border-blue-700 shadow-xl">
-                <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <Badge className="bg-blue-600 text-white px-3 sm:px-4 py-2 text-sm sm:text-xl font-bold">
-                    Your Original
-                  </Badge>
+              <div className="p-8 bg-blue-50 rounded-3xl border-2 border-blue-200 shadow-xl">
+                <div className="flex items-center gap-4 mb-6">
+                  <Badge className="bg-blue-600 text-white px-4 py-2 text-xl font-bold">Your Original</Badge>
                 </div>
-                <div className="space-y-4 sm:space-y-6">
+                <div className="space-y-6">
                   <div>
-                    <span className="font-bold text-blue-800 dark:text-blue-400 text-base sm:text-xl">Q: </span>
-                    <span className="text-blue-700 dark:text-blue-300 text-base sm:text-xl">{userQuestion}</span>
+                    <span className="font-bold text-blue-800 text-xl">Q: </span>
+                    <span className="text-blue-700 text-xl">{userQuestion}</span>
                   </div>
                   <div>
-                    <span className="font-bold text-blue-800 dark:text-blue-400 text-base sm:text-xl">A: </span>
-                    <span className="text-blue-700 dark:text-blue-300 text-base sm:text-xl">{userAnswer}</span>
+                    <span className="font-bold text-blue-800 text-xl">A: </span>
+                    <span className="text-blue-700 text-xl">{userAnswer}</span>
                   </div>
                 </div>
               </div>
@@ -556,25 +570,22 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
             {generatedCards.map((card, index) => (
               <div
                 key={index}
-                className="p-4 sm:p-8 bg-blue-50 dark:bg-blue-900/20 rounded-2xl sm:rounded-3xl border-2 border-blue-200 dark:border-blue-700 shadow-xl hover:shadow-2xl transition-shadow duration-300"
+                className="p-8 bg-blue-50 rounded-3xl border-2 border-blue-200 shadow-xl hover:shadow-2xl transition-shadow duration-300"
               >
-                <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <Badge
-                    variant="secondary"
-                    className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-400 px-3 sm:px-4 py-2 text-sm sm:text-xl font-bold"
-                  >
-                    <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+                <div className="flex items-center gap-4 mb-6">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-4 py-2 text-xl font-bold">
+                    <Sparkles className="h-5 w-5 mr-2" />
                     AI Generated #{index + 1}
                   </Badge>
                 </div>
-                <div className="space-y-4 sm:space-y-6">
+                <div className="space-y-6">
                   <div>
-                    <span className="font-bold text-blue-800 dark:text-blue-400 text-base sm:text-xl">Q: </span>
-                    <span className="text-blue-700 dark:text-blue-300 text-base sm:text-xl">{card.question}</span>
+                    <span className="font-bold text-blue-800 text-xl">Q: </span>
+                    <span className="text-blue-700 text-xl">{card.question}</span>
                   </div>
                   <div>
-                    <span className="font-bold text-blue-800 dark:text-blue-400 text-base sm:text-xl">A: </span>
-                    <span className="text-blue-700 dark:text-blue-300 text-base sm:text-xl">{card.answer}</span>
+                    <span className="font-bold text-blue-800 text-xl">A: </span>
+                    <span className="text-blue-700 text-xl">{card.answer}</span>
                   </div>
                 </div>
               </div>
@@ -582,36 +593,33 @@ export default function AIFlashcardGenerator({ onAddFlashcards }: AIFlashcardGen
 
             <Button
               onClick={addAllFlashcards}
-              className="w-full h-16 sm:h-20 text-lg sm:text-2xl font-bold bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 rounded-xl sm:rounded-2xl"
+              className="w-full h-20 text-2xl font-bold bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 rounded-2xl"
               size="lg"
             >
-              <Plus className="h-6 w-6 sm:h-8 sm:w-8 mr-2 sm:mr-4" />
-              Add All {generatedCards.length + 1} Flashcards
+              <Plus className="h-8 w-8 mr-4" />
+              Add All {generatedCards.length + (userQuestion && userAnswer ? 1 : 0)} Flashcards
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Mobile-Optimized Empty State */}
+      {/* Ultra Enhanced Empty State */}
       {generatedCards.length === 0 && (
-        <Card className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 border-gray-200/50 dark:border-gray-700/50 shadow-xl">
-          <CardContent className="text-center py-12 sm:py-24 p-4 sm:p-6">
-            <div className="relative inline-block mb-8 sm:mb-12">
+        <Card className="bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200/50 shadow-xl">
+          <CardContent className="text-center py-24">
+            <div className="relative inline-block mb-12">
               <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
-              <Sparkles className="relative h-20 w-20 sm:h-32 sm:w-32 mx-auto text-blue-400" />
+              <Sparkles className="relative h-32 w-32 mx-auto text-blue-400" />
             </div>
-            <h3 className="text-2xl sm:text-4xl font-bold text-gray-700 dark:text-gray-300 mb-4 sm:mb-6">
-              Ready to Create Amazing Flashcards!
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 text-base sm:text-2xl max-w-3xl mx-auto mb-8 sm:mb-12 leading-relaxed">
-              Enter your question and answer, then let our AI create 5 additional high-quality study flashcards!
+            <h3 className="text-4xl font-bold text-gray-700 mb-6">Ready to Create Amazing Flashcards!</h3>
+            <p className="text-gray-500 text-2xl max-w-3xl mx-auto mb-12 leading-relaxed">
+              Enter your question and answer, then let our advanced AI create 5 additional high-quality study flashcards
+              to help you master the topic!
             </p>
-            <div className="space-y-6 sm:space-y-8">
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 sm:p-8 rounded-xl sm:rounded-2xl border border-blue-200 dark:border-blue-700 max-w-2xl mx-auto">
-                <h4 className="font-bold text-blue-800 dark:text-blue-400 mb-3 sm:mb-4 text-lg sm:text-xl">
-                  💡 Example:
-                </h4>
-                <p className="text-blue-700 dark:text-blue-300 text-sm sm:text-lg text-left">
+            <div className="space-y-8">
+              <div className="bg-blue-50 p-8 rounded-2xl border border-blue-200 max-w-2xl mx-auto">
+                <h4 className="font-bold text-blue-800 mb-4 text-xl">💡 Example:</h4>
+                <p className="text-blue-700 text-lg">
                   <strong>Subject:</strong> Biology
                   <br />
                   <strong>Question:</strong> What is photosynthesis?

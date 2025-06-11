@@ -1,19 +1,36 @@
-import * as React from "react"
+"use client"
 
-const MOBILE_BREAKPOINT = 768
+import { useState, useEffect } from "react"
 
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+export function useMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+  const [isTablet, setIsTablet] = useState(false)
+  const [isLandscape, setIsLandscape] = useState(false)
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+  useEffect(() => {
+    const checkDevice = () => {
+      const mobile = window.innerWidth < 640
+      const tablet = window.innerWidth >= 640 && window.innerWidth < 1024
+      const landscape = window.innerWidth > window.innerHeight
+
+      setIsMobile(mobile)
+      setIsTablet(tablet)
+      setIsLandscape(landscape)
     }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
+
+    // Initial check
+    checkDevice()
+
+    // Add event listener for window resize
+    window.addEventListener("resize", checkDevice)
+    window.addEventListener("orientationchange", checkDevice)
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("resize", checkDevice)
+      window.removeEventListener("orientationchange", checkDevice)
+    }
   }, [])
 
-  return !!isMobile
+  return { isMobile, isTablet, isLandscape }
 }

@@ -27,16 +27,6 @@ class AIService {
   // Update this to your deployed Python API URL
   private baseUrl = process.env.NEXT_PUBLIC_AI_API_URL || "/api"
 
-  constructor() {
-    // Check if the API URL is accidentally set to the Gemini API key
-    if (process.env.NEXT_PUBLIC_AI_API_URL?.startsWith("AIzaSy")) {
-      console.warn(
-        "Warning: NEXT_PUBLIC_AI_API_URL appears to be set to an API key. Using default /api endpoint instead.",
-      )
-      this.baseUrl = "/api"
-    }
-  }
-
   async generateFlashcards(data: {
     question: string
     answer: string
