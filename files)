@@ -1,0 +1,10 @@
+/>
+
+1. Replace **all** occurrences of  
+   `from "date-fns` **or** `from "date-fns/` **or** `from "npm:date-fns@4.1.0`  
+   with the correct, published package:
+
+   ```ts
+   // examples ― do exactly the same in every file that used date-fns
+   import { format } from "npm:date-fns@3.6.0"
+   import { enUS }   from "npm:date-fns@3.6.0/locale"

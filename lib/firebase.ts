@@ -1,10 +1,10 @@
-// Import Firebase modules
-import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app"
-import { getAuth, connectAuthEmulator, type Auth } from "firebase/auth"
+import { initializeApp } from "firebase/app"
+import { getAuth, connectAuthEmulator, type Auth, type GoogleAuthProvider } from "firebase/auth"
 import { getFirestore, connectFirestoreEmulator, type Firestore } from "firebase/firestore"
-import { getStorage, type FirebaseStorage } from "firebase/storage"
+import { getStorage, connectStorageEmulator, type FirebaseStorage } from "firebase/storage"
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 
-// Firebase configuration
+// ℹ️ https://firebase.google.com/docs/web/setup#config-object
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -15,189 +15,124 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 }
 
-// Initialize Firebase app
-let app: FirebaseApp
-let auth: Auth
-let db: Firestore
-let storage: FirebaseStorage
-
-try {
-  // Initialize app
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
-
-  // Initialize services immediately
-  auth = getAuth(app)
-  db = getFirestore(app)
-  storage = getStorage(app)
-
-  console.log("✅ Firebase initialized successfully")
-} catch (error) {
-  console.error("❌ Failed to initialize Firebase:", error)
-  throw error
+// 🔍 Validate configuration --------------------------------------------------
+const requiredKeys = {
+  apiKey: "NEXT_PUBLIC_FIREBASE_API_KEY",
+  authDomain: "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+  projectId: "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+  storageBucket: "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+  messagingSenderId: "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+  appId: "NEXT_PUBLIC_FIREBASE_APP_ID",
+  measurementId: "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID",
 }
 
-// Initialize Firebase services
-export const authExport = auth
-export const dbExport = db
+const missing = Object.entries(requiredKeys).filter(
+  ([cfgKey, envVar]) => !firebaseConfig[cfgKey as keyof typeof firebaseConfig],
+)
 
-// Only connect to emulators in development and if not already connected
-if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
+let usingEmulators = false
+
+if (missing.length) {
+  const missingList = missing.map(([, env]) => env).join(", ")
+
+  if (process.env.NODE_ENV === "development") {
+    // In dev: use dummy config so you can still run the app with emulators
+    console.warn(`⚠️  Missing Firebase env vars: ${missingList}. ` + "Falling back to emulator-only config.")
+    // Provide obviously fake values for the SDK
+    firebaseConfig.apiKey = "local-fake-api-key"
+    firebaseConfig.authDomain = "localhost"
+    firebaseConfig.projectId = "demo-project"
+    firebaseConfig.storageBucket = "demo-project.appspot.com"
+    usingEmulators = true
+  } else {
+    throw new Error(`❌ Firebase initialisation failed – missing env vars: ${missingList}`)
+  }
+}
+
+// 🚀 Initialize Firebase
+const app = initializeApp(firebaseConfig)
+
+// 🔥 Auth
+export const auth = getAuth(app)
+
+// 💾 Firestore
+export const db = getFirestore(app)
+
+// 🗄️ Storage
+export const storage = getStorage(app)
+
+// ⚙️ Functions
+export const functions = getFunctions(app)
+
+// 🧪 Connect to Emulators - Only if we have missing config OR explicitly enabled
+if (typeof window !== "undefined" && (usingEmulators || process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true")) {
   try {
-    // Check if already connected to avoid multiple connections
-    if (!auth.settings.appCheckTokenProvider) {
+    console.log("🔧 Connecting to Firebase emulators...")
+
+    // Only connect if not already connected
+    if (!auth.config.emulator) {
       connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true })
     }
-  } catch (error) {
-    // Emulator connection errors are non-critical in production builds
-    console.log("Auth emulator connection skipped")
-  }
 
-  try {
-    // Check if already connected to avoid multiple connections
-    if (!db._delegate._databaseId.projectId.includes("demo-")) {
+    if (!db._delegate._databaseId.projectId.includes("localhost")) {
       connectFirestoreEmulator(db, "localhost", 8080)
     }
+
+    connectStorageEmulator(storage, "localhost", 9199)
+    connectFunctionsEmulator(functions, "localhost", 5001)
+
+    console.log("✅ Connected to Firebase emulators")
   } catch (error) {
-    // Emulator connection errors are non-critical in production builds
-    console.log("Firestore emulator connection skipped")
+    console.warn("⚠️ Could not connect to Firebase emulators:", error)
+    console.warn("💡 Make sure to run: firebase emulators:start")
   }
 }
 
-// Export the initialized instances
-export default app
-export { authExport as auth, dbExport as db, storage }
-
 /**
- * Get Firebase Auth instance
+ * Return the already-initialised Firebase Auth instance.
  */
 export function getFirebaseAuth(): Auth {
-  if (!auth) {
-    throw new Error("Firebase Auth not initialized")
-  }
   return auth
 }
 
 /**
- * Get Firestore instance
+ * Return the already-initialised Firestore instance.
  */
 export function getFirebaseDb(): Firestore {
-  if (!db) {
-    throw new Error("Firestore not initialized")
-  }
   return db
 }
 
 /**
- * Get Firebase Storage instance
+ * Return the already-initialised Storage instance.
  */
 export function getFirebaseStorage(): FirebaseStorage {
-  if (!storage) {
-    throw new Error("Firebase Storage not initialized")
-  }
   return storage
 }
 
 /**
- * Get Google Auth Provider
+ * Lazily import and configure a GoogleAuthProvider.
  */
-export async function getGoogleAuthProvider() {
-  try {
-    const { GoogleAuthProvider } = await import("firebase/auth")
-    const provider = new GoogleAuthProvider()
-    provider.setCustomParameters({
-      prompt: "select_account",
-    })
-    return provider
-  } catch (error) {
-    console.error("❌ Failed to get Google Auth Provider:", error)
-    throw new Error("Google Auth Provider initialization failed")
-  }
+export async function getGoogleAuthProvider(): Promise<GoogleAuthProvider> {
+  const { GoogleAuthProvider } = await import("firebase/auth")
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: "select_account" })
+  return provider
 }
 
 /**
- * Get Firebase Auth functions
+ * Lazily import the heavyweight auth functions on demand.
  */
 export async function getAuthFunctions() {
-  try {
-    const authModule = await import("firebase/auth")
-    return {
-      signInWithEmailAndPassword: authModule.signInWithEmailAndPassword,
-      createUserWithEmailAndPassword: authModule.createUserWithEmailAndPassword,
-      signInWithPopup: authModule.signInWithPopup,
-      signOut: authModule.signOut,
-      onAuthStateChanged: authModule.onAuthStateChanged,
-      RecaptchaVerifier: authModule.RecaptchaVerifier,
-      signInWithPhoneNumber: authModule.signInWithPhoneNumber,
-    }
-  } catch (error) {
-    console.error("❌ Failed to get auth functions:", error)
-    throw new Error("Auth functions initialization failed")
+  const authModule = await import("firebase/auth")
+  return {
+    signInWithEmailAndPassword: authModule.signInWithEmailAndPassword,
+    createUserWithEmailAndPassword: authModule.createUserWithEmailAndPassword,
+    signInWithPopup: authModule.signInWithPopup,
+    signOut: authModule.signOut,
+    onAuthStateChanged: authModule.onAuthStateChanged,
+    RecaptchaVerifier: authModule.RecaptchaVerifier,
+    signInWithPhoneNumber: authModule.signInWithPhoneNumber,
   }
 }
 
-/**
- * Initialize Firebase services (simplified version)
- */
-export async function initializeFirebase(): Promise<boolean> {
-  try {
-    console.log("🚀 Firebase services already initialized")
-
-    // Test auth
-    if (!auth) {
-      throw new Error("Auth not initialized")
-    }
-    console.log("✅ Firebase Auth ready")
-
-    // Test firestore
-    if (!db) {
-      throw new Error("Firestore not initialized")
-    }
-    console.log("✅ Firestore ready")
-
-    // Test storage
-    if (!storage) {
-      throw new Error("Storage not initialized")
-    }
-    console.log("✅ Firebase Storage ready")
-
-    console.log("🎉 All Firebase services ready")
-    return true
-  } catch (error) {
-    console.error("💥 Firebase initialization check failed:", error)
-    return false
-  }
-}
-
-/**
- * Check if Firebase is ready to use
- */
-export function isFirebaseReady(): boolean {
-  return !!(app && auth && db && storage)
-}
-
-/**
- * Wait for Firebase to be ready with timeout
- */
-export async function waitForFirebase(timeout = 10000): Promise<boolean> {
-  console.log("⏳ Checking if Firebase is ready...")
-
-  try {
-    const success = await initializeFirebase()
-    if (success) {
-      console.log("✅ Firebase is ready!")
-      return true
-    }
-  } catch (error) {
-    console.error("❌ Firebase check failed:", error)
-  }
-
-  return false
-}
-
-/**
- * Force reinitialize Firebase services
- */
-export async function reinitializeFirebase(): Promise<boolean> {
-  console.log("🔄 Firebase services are already initialized")
-  return await initializeFirebase()
-}
+export default app

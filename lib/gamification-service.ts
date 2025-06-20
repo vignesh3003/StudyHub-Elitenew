@@ -61,6 +61,21 @@ class GamificationService {
     this.achievementCallbacks.forEach((callback) => callback(achievement))
   }
 
+  // Check if we're online and can use Firebase
+  private async isOnline(): Promise<boolean> {
+    try {
+      // Simple connectivity check
+      const response = await fetch("/api/test", {
+        method: "HEAD",
+        cache: "no-cache",
+        signal: AbortSignal.timeout(3000),
+      })
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
   // Initialize user stats if they don't exist
   async initUserStats(userId: string): Promise<UserStats> {
     const initialStats: UserStats = {
@@ -378,20 +393,22 @@ class GamificationService {
       ],
     }
 
-    try {
-      const userStatsRef = doc(db, "userStats", userId)
-      await setDoc(userStatsRef, {
-        ...initialStats,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
+    // Always save to localStorage first
+    localStorage.setItem(`userStats_${userId}`, JSON.stringify(initialStats))
 
-      // Save to localStorage as backup
-      localStorage.setItem(`userStats_${userId}`, JSON.stringify(initialStats))
-    } catch (error: any) {
-      console.warn("Could not save user stats to Firebase:", error.message)
-      // Save to localStorage as fallback
-      localStorage.setItem(`userStats_${userId}`, JSON.stringify(initialStats))
+    // Try to save to Firebase if online
+    if (await this.isOnline()) {
+      try {
+        const userStatsRef = doc(db, "userStats", userId)
+        await setDoc(userStatsRef, {
+          ...initialStats,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+        console.log("✅ User stats saved to Firebase")
+      } catch (error: any) {
+        console.warn("⚠️ Could not save user stats to Firebase:", error.message)
+      }
     }
 
     return initialStats
@@ -399,6 +416,24 @@ class GamificationService {
 
   // Get user stats
   async getUserStats(userId: string): Promise<UserStats> {
+    // Try localStorage first for immediate response
+    const localData = localStorage.getItem(`userStats_${userId}`)
+    let localStats: UserStats | null = null
+
+    if (localData) {
+      try {
+        localStats = JSON.parse(localData)
+      } catch (error) {
+        console.warn("Could not parse local stats:", error)
+      }
+    }
+
+    // If offline or Firebase fails, return local data or initialize
+    if (!(await this.isOnline())) {
+      console.log("📱 Offline mode: using localStorage")
+      return localStats || (await this.initUserStats(userId))
+    }
+
     try {
       const userStatsRef = doc(db, "userStats", userId)
       const userStatsDoc = await getDoc(userStatsRef)
@@ -430,213 +465,166 @@ class GamificationService {
       localStorage.setItem(`userStats_${userId}`, JSON.stringify(data))
       return data
     } catch (error: any) {
-      console.warn("Error fetching user stats, trying localStorage:", error.message)
-
-      // Try to get from localStorage
-      const localData = localStorage.getItem(`userStats_${userId}`)
-      if (localData) {
-        return JSON.parse(localData)
-      }
-
-      // Return fresh stats as fallback
-      return this.initUserStats(userId)
+      console.warn("Error fetching user stats from Firebase:", error.message)
+      return localStats || (await this.initUserStats(userId))
     }
   }
 
   // Update streak based on daily login
   async updateStreak(userId: string): Promise<number> {
-    try {
-      const userStatsRef = doc(db, "userStats", userId)
-      const userStatsDoc = await getDoc(userStatsRef)
+    const localData = localStorage.getItem(`userStats_${userId}`)
+    let stats: UserStats
 
-      if (!userStatsDoc.exists()) {
-        await this.initUserStats(userId)
-        return 1
-      }
+    if (localData) {
+      stats = JSON.parse(localData)
+    } else {
+      stats = await this.getUserStats(userId)
+    }
 
-      const stats = userStatsDoc.data() as UserStats
-      const now = new Date()
-      const lastActive = stats.lastActive?.toDate() || null
+    const now = new Date()
+    const lastActive = stats.lastActive?.toDate?.() || (stats.lastActive ? new Date(stats.lastActive as any) : null)
 
-      let newStreak = stats.streak
-      if (lastActive) {
-        const lastActiveDate = new Date(lastActive)
-        const yesterday = new Date(now)
-        yesterday.setDate(yesterday.getDate() - 1)
+    let newStreak = stats.streak
+    if (lastActive) {
+      const lastActiveDate = new Date(lastActive)
+      const yesterday = new Date(now)
+      yesterday.setDate(yesterday.getDate() - 1)
 
-        const isToday =
-          lastActiveDate.getDate() === now.getDate() &&
-          lastActiveDate.getMonth() === now.getMonth() &&
-          lastActiveDate.getFullYear() === now.getFullYear()
+      const isToday =
+        lastActiveDate.getDate() === now.getDate() &&
+        lastActiveDate.getMonth() === now.getMonth() &&
+        lastActiveDate.getFullYear() === now.getFullYear()
 
-        const isYesterday =
-          lastActiveDate.getDate() === yesterday.getDate() &&
-          lastActiveDate.getMonth() === yesterday.getMonth() &&
-          lastActiveDate.getFullYear() === yesterday.getFullYear()
+      const isYesterday =
+        lastActiveDate.getDate() === yesterday.getDate() &&
+        lastActiveDate.getMonth() === yesterday.getMonth() &&
+        lastActiveDate.getFullYear() === yesterday.getFullYear()
 
-        if (isToday) {
-          return stats.streak
-        } else if (isYesterday) {
-          newStreak = stats.streak + 1
-        } else {
-          newStreak = 1
-        }
+      if (isToday) {
+        return stats.streak
+      } else if (isYesterday) {
+        newStreak = stats.streak + 1
       } else {
         newStreak = 1
       }
-
-      await updateDoc(userStatsRef, {
-        streak: newStreak,
-        lastActive: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
-
-      // Update localStorage
-      const updatedStats = { ...stats, streak: newStreak }
-      localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
-
-      // Check for streak achievements
-      if (newStreak >= 7) {
-        await this.unlockAchievement(userId, "week-warrior")
-      }
-      if (newStreak >= 14) {
-        await this.unlockAchievement(userId, "consistency-builder")
-      }
-      if (newStreak >= 30) {
-        await this.unlockAchievement(userId, "streak-warrior")
-      }
-      if (newStreak >= 100) {
-        await this.unlockAchievement(userId, "consistency-king")
-      }
-
-      return newStreak
-    } catch (error: any) {
-      console.warn("Error updating streak:", error.message)
-      return 1
+    } else {
+      newStreak = 1
     }
+
+    // Update localStorage immediately
+    const updatedStats = { ...stats, streak: newStreak, lastActive: now as any }
+    localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
+
+    // Try to update Firebase if online
+    if (await this.isOnline()) {
+      try {
+        const userStatsRef = doc(db, "userStats", userId)
+        await updateDoc(userStatsRef, {
+          streak: newStreak,
+          lastActive: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+      } catch (error: any) {
+        console.warn("Could not update streak in Firebase:", error.message)
+      }
+    }
+
+    // Check for streak achievements
+    if (newStreak >= 7) {
+      await this.unlockAchievement(userId, "week-warrior")
+    }
+    if (newStreak >= 14) {
+      await this.unlockAchievement(userId, "consistency-builder")
+    }
+    if (newStreak >= 30) {
+      await this.unlockAchievement(userId, "streak-warrior")
+    }
+    if (newStreak >= 100) {
+      await this.unlockAchievement(userId, "consistency-king")
+    }
+
+    return newStreak
   }
 
   // Add XP and check for level up
   async addXP(userId: string, amount: number): Promise<{ newXP: number; newLevel: number; leveledUp: boolean }> {
-    try {
-      const userStatsRef = doc(db, "userStats", userId)
-      const userStatsDoc = await getDoc(userStatsRef)
+    const stats = await this.getUserStats(userId)
+    const currentLevel = stats.level
+    const newXP = stats.xp + amount
 
-      if (!userStatsDoc.exists()) {
-        await this.initUserStats(userId)
-        return { newXP: amount, newLevel: 1, leveledUp: false }
+    const newLevel = Math.floor(newXP / this.XP_PER_LEVEL) + 1
+    const leveledUp = newLevel > currentLevel
+
+    // Update localStorage immediately
+    const updatedStats = { ...stats, xp: newXP, level: newLevel }
+    localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
+
+    // Try to update Firebase if online
+    if (await this.isOnline()) {
+      try {
+        const userStatsRef = doc(db, "userStats", userId)
+        await updateDoc(userStatsRef, {
+          xp: newXP,
+          level: newLevel,
+          updatedAt: serverTimestamp(),
+        })
+      } catch (error: any) {
+        console.warn("Could not update XP in Firebase:", error.message)
       }
-
-      const stats = userStatsDoc.data() as UserStats
-      const currentLevel = stats.level
-      const newXP = stats.xp + amount
-
-      const newLevel = Math.floor(newXP / this.XP_PER_LEVEL) + 1
-      const leveledUp = newLevel > currentLevel
-
-      await updateDoc(userStatsRef, {
-        xp: newXP,
-        level: newLevel,
-        updatedAt: serverTimestamp(),
-      })
-
-      // Update localStorage
-      const updatedStats = { ...stats, xp: newXP, level: newLevel }
-      localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
-
-      return { newXP, newLevel, leveledUp }
-    } catch (error: any) {
-      console.warn("Error adding XP:", error.message)
-
-      // Fallback to localStorage
-      const localData = localStorage.getItem(`userStats_${userId}`)
-      if (localData) {
-        const stats = JSON.parse(localData)
-        const currentLevel = stats.level
-        const newXP = stats.xp + amount
-        const newLevel = Math.floor(newXP / this.XP_PER_LEVEL) + 1
-        const leveledUp = newLevel > currentLevel
-
-        const updatedStats = { ...stats, xp: newXP, level: newLevel }
-        localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
-
-        return { newXP, newLevel, leveledUp }
-      }
-
-      return { newXP: amount, newLevel: 1, leveledUp: false }
     }
+
+    return { newXP, newLevel, leveledUp }
   }
 
   // Record completed task
   async recordTaskCompleted(userId: string): Promise<void> {
-    try {
-      const userStatsRef = doc(db, "userStats", userId)
+    const stats = await this.getUserStats(userId)
+    const newTasksCompleted = stats.tasksCompleted + 1
 
-      await updateDoc(userStatsRef, {
-        tasksCompleted: increment(1),
-        updatedAt: serverTimestamp(),
-      })
+    // Update localStorage immediately
+    const updatedStats = { ...stats, tasksCompleted: newTasksCompleted }
+    localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
 
-      await this.addXP(userId, 25)
-
-      // Check for task achievements
-      const updatedStats = await this.getUserStats(userId)
-
-      if (updatedStats.tasksCompleted >= 1) {
-        await this.unlockAchievement(userId, "first-task")
-      }
-      if (updatedStats.tasksCompleted >= 50) {
-        await this.unlockAchievement(userId, "task-master")
-      }
-      if (updatedStats.tasksCompleted >= 100) {
-        await this.unlockAchievement(userId, "productivity-pro")
-      }
-      if (updatedStats.tasksCompleted >= 200) {
-        await this.unlockAchievement(userId, "century-club")
-      }
-      if (updatedStats.tasksCompleted >= 500) {
-        await this.updateAchievementProgress(userId, "perfectionist", updatedStats.tasksCompleted)
-      }
-      if (updatedStats.tasksCompleted >= 1000) {
-        await this.updateAchievementProgress(userId, "ultimate-scholar", updatedStats.tasksCompleted)
-      }
-
-      await this.updateAchievementProgress(userId, "task-master", updatedStats.tasksCompleted)
-      await this.updateAchievementProgress(userId, "productivity-pro", updatedStats.tasksCompleted)
-      await this.updateAchievementProgress(userId, "century-club", updatedStats.tasksCompleted)
-    } catch (error: any) {
-      console.warn("Error recording task completion:", error.message)
-
-      // Fallback to localStorage
-      const localData = localStorage.getItem(`userStats_${userId}`)
-      if (localData) {
-        const stats = JSON.parse(localData)
-        stats.tasksCompleted = (stats.tasksCompleted || 0) + 1
-        localStorage.setItem(`userStats_${userId}`, JSON.stringify(stats))
-        await this.addXP(userId, 25)
+    // Try to update Firebase if online
+    if (await this.isOnline()) {
+      try {
+        const userStatsRef = doc(db, "userStats", userId)
+        await updateDoc(userStatsRef, {
+          tasksCompleted: increment(1),
+          updatedAt: serverTimestamp(),
+        })
+      } catch (error: any) {
+        console.warn("Could not record task completion in Firebase:", error.message)
       }
     }
+
+    await this.addXP(userId, 25)
+
+    // Check for task achievements
+    if (newTasksCompleted >= 1) {
+      await this.unlockAchievement(userId, "first-task")
+    }
+    if (newTasksCompleted >= 50) {
+      await this.unlockAchievement(userId, "task-master")
+    }
+    if (newTasksCompleted >= 100) {
+      await this.unlockAchievement(userId, "productivity-pro")
+    }
+    if (newTasksCompleted >= 200) {
+      await this.unlockAchievement(userId, "century-club")
+    }
+
+    await this.updateAchievementProgress(userId, "task-master", newTasksCompleted)
+    await this.updateAchievementProgress(userId, "productivity-pro", newTasksCompleted)
+    await this.updateAchievementProgress(userId, "century-club", newTasksCompleted)
   }
 
   // Record task creation (different from completion)
   async recordTaskCreated(userId: string): Promise<void> {
     try {
       console.log(`🎯 Recording task creation for user ${userId}`)
-
-      // First ensure user stats exist
-      const userStatsRef = doc(db, "userStats", userId)
-      const userStatsDoc = await getDoc(userStatsRef)
-      if (!userStatsDoc.exists()) {
-        console.log("📊 User stats don't exist, initializing...")
-        await this.initUserStats(userId)
-      }
-
       await this.addXP(userId, 10) // Small XP for creating a task
-
-      // Check for task creation achievements
-      console.log("🏆 Unlocking first-task achievement")
       await this.unlockAchievement(userId, "first-task")
-
       console.log("✅ Task creation recorded successfully")
     } catch (error: any) {
       console.error("❌ Error recording task creation:", error)
@@ -646,61 +634,55 @@ class GamificationService {
 
   // Record study session
   async recordStudySession(userId: string, durationMinutes: number): Promise<void> {
-    try {
-      const userStatsRef = doc(db, "userStats", userId)
+    const stats = await this.getUserStats(userId)
+    const hours = durationMinutes / 60
+    const newStudyHours = stats.studyHours + hours
 
-      const hours = durationMinutes / 60
+    // Update localStorage immediately
+    const updatedStats = { ...stats, studyHours: newStudyHours }
+    localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
 
-      await updateDoc(userStatsRef, {
-        studyHours: increment(hours),
-        updatedAt: serverTimestamp(),
-      })
-
-      const xpEarned = Math.floor(durationMinutes / 5) * 10
-      await this.addXP(userId, xpEarned)
-
-      const updatedStats = await this.getUserStats(userId)
-
-      // Check for study achievements
-      if (updatedStats.studyHours >= 1) {
-        await this.unlockAchievement(userId, "first-study")
-      }
-      if (updatedStats.studyHours >= 5) {
-        await this.unlockAchievement(userId, "study-novice")
-      }
-      if (updatedStats.studyHours >= 50) {
-        await this.unlockAchievement(userId, "study-machine")
-      }
-      if (updatedStats.studyHours >= 100) {
-        await this.unlockAchievement(userId, "study-marathon")
-      }
-      if (durationMinutes >= 120) {
-        // 2 hours
-        await this.unlockAchievement(userId, "focused-mind")
-      }
-      if (durationMinutes >= 180) {
-        // 3 hours
-        await this.unlockAchievement(userId, "focus-master")
-      }
-
-      await this.updateAchievementProgress(userId, "study-novice", Math.floor(updatedStats.studyHours * 2))
-      await this.updateAchievementProgress(userId, "study-machine", Math.floor(updatedStats.studyHours))
-      await this.updateAchievementProgress(userId, "study-marathon", Math.floor(updatedStats.studyHours))
-    } catch (error: any) {
-      console.warn("Error recording study session:", error.message)
-
-      // Fallback to localStorage
-      const localData = localStorage.getItem(`userStats_${userId}`)
-      if (localData) {
-        const stats = JSON.parse(localData)
-        const hours = durationMinutes / 60
-        stats.studyHours = (stats.studyHours || 0) + hours
-        localStorage.setItem(`userStats_${userId}`, JSON.stringify(stats))
-
-        const xpEarned = Math.floor(durationMinutes / 5) * 10
-        await this.addXP(userId, xpEarned)
+    // Try to update Firebase if online
+    if (await this.isOnline()) {
+      try {
+        const userStatsRef = doc(db, "userStats", userId)
+        await updateDoc(userStatsRef, {
+          studyHours: increment(hours),
+          updatedAt: serverTimestamp(),
+        })
+      } catch (error: any) {
+        console.warn("Could not record study session in Firebase:", error.message)
       }
     }
+
+    const xpEarned = Math.floor(durationMinutes / 5) * 10
+    await this.addXP(userId, xpEarned)
+
+    // Check for study achievements
+    if (newStudyHours >= 1) {
+      await this.unlockAchievement(userId, "first-study")
+    }
+    if (newStudyHours >= 5) {
+      await this.unlockAchievement(userId, "study-novice")
+    }
+    if (newStudyHours >= 50) {
+      await this.unlockAchievement(userId, "study-machine")
+    }
+    if (newStudyHours >= 100) {
+      await this.unlockAchievement(userId, "study-marathon")
+    }
+    if (durationMinutes >= 120) {
+      // 2 hours
+      await this.unlockAchievement(userId, "focused-mind")
+    }
+    if (durationMinutes >= 180) {
+      // 3 hours
+      await this.unlockAchievement(userId, "focus-master")
+    }
+
+    await this.updateAchievementProgress(userId, "study-novice", Math.floor(newStudyHours * 2))
+    await this.updateAchievementProgress(userId, "study-machine", Math.floor(newStudyHours))
+    await this.updateAchievementProgress(userId, "study-marathon", Math.floor(newStudyHours))
   }
 
   // Record flashcard creation
@@ -708,169 +690,168 @@ class GamificationService {
     try {
       console.log(`🎯 Recording ${count} flashcards created for user ${userId}`)
 
-      const userStatsRef = doc(db, "userStats", userId)
+      const stats = await this.getUserStats(userId)
+      const newFlashcardsCreated = stats.flashcardsCreated + count
 
-      // First ensure user stats exist
-      const userStatsDoc = await getDoc(userStatsRef)
-      if (!userStatsDoc.exists()) {
-        console.log("📊 User stats don't exist, initializing...")
-        await this.initUserStats(userId)
+      // Update localStorage immediately
+      const updatedStats = { ...stats, flashcardsCreated: newFlashcardsCreated }
+      localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
+
+      // Try to update Firebase if online
+      if (await this.isOnline()) {
+        try {
+          const userStatsRef = doc(db, "userStats", userId)
+          await updateDoc(userStatsRef, {
+            flashcardsCreated: increment(count),
+            updatedAt: serverTimestamp(),
+          })
+        } catch (error: any) {
+          console.warn("Could not record flashcard creation in Firebase:", error.message)
+        }
       }
-
-      await updateDoc(userStatsRef, {
-        flashcardsCreated: increment(count),
-        updatedAt: serverTimestamp(),
-      })
 
       await this.addXP(userId, 15 * count)
 
-      // Get updated stats to check current flashcard count
-      const updatedStats = await this.getUserStats(userId)
-      console.log(`📊 Current flashcard count: ${updatedStats.flashcardsCreated}`)
+      console.log(`📊 Current flashcard count: ${newFlashcardsCreated}`)
 
       // Check for flashcard achievements with current count
-      if (updatedStats.flashcardsCreated >= 1) {
+      if (newFlashcardsCreated >= 1) {
         console.log("🏆 Unlocking quick-learner achievement")
         await this.unlockAchievement(userId, "quick-learner")
       }
-      if (updatedStats.flashcardsCreated >= 10) {
+      if (newFlashcardsCreated >= 10) {
         console.log("🏆 Unlocking flashcard-fan achievement")
         await this.unlockAchievement(userId, "flashcard-fan")
       }
-      if (updatedStats.flashcardsCreated >= 25) {
+      if (newFlashcardsCreated >= 25) {
         console.log("🏆 Unlocking flashcard-creator achievement")
         await this.unlockAchievement(userId, "flashcard-creator")
       }
-      if (updatedStats.flashcardsCreated >= 100) {
+      if (newFlashcardsCreated >= 100) {
         console.log("🏆 Unlocking flashcard-master achievement")
         await this.unlockAchievement(userId, "flashcard-master")
       }
-      if (updatedStats.flashcardsCreated >= 500) {
+      if (newFlashcardsCreated >= 500) {
         console.log("🏆 Unlocking knowledge-god achievement")
         await this.unlockAchievement(userId, "knowledge-god")
       }
 
       // Update achievement progress for all flashcard achievements
-      await this.updateAchievementProgress(userId, "flashcard-fan", updatedStats.flashcardsCreated)
-      await this.updateAchievementProgress(userId, "flashcard-creator", updatedStats.flashcardsCreated)
-      await this.updateAchievementProgress(userId, "flashcard-master", updatedStats.flashcardsCreated)
-      await this.updateAchievementProgress(userId, "knowledge-god", updatedStats.flashcardsCreated)
+      await this.updateAchievementProgress(userId, "flashcard-fan", newFlashcardsCreated)
+      await this.updateAchievementProgress(userId, "flashcard-creator", newFlashcardsCreated)
+      await this.updateAchievementProgress(userId, "flashcard-master", newFlashcardsCreated)
+      await this.updateAchievementProgress(userId, "knowledge-god", newFlashcardsCreated)
 
       console.log("✅ Flashcard achievements updated successfully")
     } catch (error: any) {
       console.error("❌ Error recording flashcard creation:", error)
-      console.error("Error details:", error.message)
-
-      // Fallback to localStorage
-      const localData = localStorage.getItem(`userStats_${userId}`)
-      if (localData) {
-        const stats = JSON.parse(localData)
-        stats.flashcardsCreated = (stats.flashcardsCreated || 0) + count
-        localStorage.setItem(`userStats_${userId}`, JSON.stringify(stats))
-        await this.addXP(userId, 15 * count)
-        console.log("📱 Updated flashcard count in localStorage:", stats.flashcardsCreated)
-      }
+      await this.addXP(userId, 15 * count)
     }
   }
 
   // Record AI feature usage
   async recordAIFeatureUsed(userId: string, featureId: string): Promise<void> {
-    try {
-      const userStatsRef = doc(db, "userStats", userId)
-      const userAIFeaturesRef = doc(db, "userAIFeatures", userId)
+    await this.addXP(userId, 20)
 
-      await this.addXP(userId, 20)
+    // Try to update Firebase if online
+    if (await this.isOnline()) {
+      try {
+        const userAIFeaturesRef = doc(db, "userAIFeatures", userId)
+        const userAIFeaturesDoc = await getDoc(userAIFeaturesRef)
 
-      const userAIFeaturesDoc = await getDoc(userAIFeaturesRef)
-
-      if (!userAIFeaturesDoc.exists()) {
-        await setDoc(userAIFeaturesRef, {
-          features: [featureId],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        })
-      } else {
-        const data = userAIFeaturesDoc.data()
-        if (!data.features.includes(featureId)) {
-          await updateDoc(userAIFeaturesRef, {
-            features: arrayUnion(featureId),
+        if (!userAIFeaturesDoc.exists()) {
+          await setDoc(userAIFeaturesRef, {
+            features: [featureId],
+            createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           })
+        } else {
+          const data = userAIFeaturesDoc.data()
+          if (!data.features.includes(featureId)) {
+            await updateDoc(userAIFeaturesRef, {
+              features: arrayUnion(featureId),
+              updatedAt: serverTimestamp(),
+            })
+          }
         }
+
+        const updatedDoc = await getDoc(userAIFeaturesRef)
+        const uniqueFeatures = updatedDoc.exists() ? updatedDoc.data().features.length : 0
+
+        await this.updateAchievementProgress(userId, "ai-explorer", uniqueFeatures)
+
+        if (uniqueFeatures >= 5) {
+          await this.unlockAchievement(userId, "ai-explorer")
+        }
+      } catch (error: any) {
+        console.warn("Could not record AI feature usage in Firebase:", error.message)
       }
-
-      const updatedDoc = await getDoc(userAIFeaturesRef)
-      const uniqueFeatures = updatedDoc.exists() ? updatedDoc.data().features.length : 0
-
-      await this.updateAchievementProgress(userId, "ai-explorer", uniqueFeatures)
-
-      if (uniqueFeatures >= 5) {
-        await this.unlockAchievement(userId, "ai-explorer")
-      }
-    } catch (error: any) {
-      console.warn("Error recording AI feature usage:", error.message)
-      await this.addXP(userId, 20)
     }
   }
 
   // Record study room participation
   async recordStudyRoomJoined(userId: string): Promise<void> {
-    const userStatsRef = doc(db, "userStats", userId)
-    const userSocialRef = doc(db, "userSocial", userId)
-
-    // Add XP for social interaction
     await this.addXP(userId, 30)
 
-    // Record study room participation
-    const userSocialDoc = await getDoc(userSocialRef)
+    // Try to update Firebase if online
+    if (await this.isOnline()) {
+      try {
+        const userSocialRef = doc(db, "userSocial", userId)
+        const userSocialDoc = await getDoc(userSocialRef)
 
-    if (!userSocialDoc.exists()) {
-      await setDoc(userSocialRef, {
-        studyRoomsJoined: 1,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
-    } else {
-      await updateDoc(userSocialRef, {
-        studyRoomsJoined: increment(1),
-        updatedAt: serverTimestamp(),
-      })
-    }
+        if (!userSocialDoc.exists()) {
+          await setDoc(userSocialRef, {
+            studyRoomsJoined: 1,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          })
+        } else {
+          await updateDoc(userSocialRef, {
+            studyRoomsJoined: increment(1),
+            updatedAt: serverTimestamp(),
+          })
+        }
 
-    // Check for social achievements
-    const updatedDoc = await getDoc(userSocialRef)
-    const roomsJoined = updatedDoc.exists() ? updatedDoc.data().studyRoomsJoined : 0
+        const updatedDoc = await getDoc(userSocialRef)
+        const roomsJoined = updatedDoc.exists() ? updatedDoc.data().studyRoomsJoined : 0
 
-    await this.updateAchievementProgress(userId, "social-butterfly", roomsJoined)
+        await this.updateAchievementProgress(userId, "social-butterfly", roomsJoined)
 
-    if (roomsJoined >= 10) {
-      await this.unlockAchievement(userId, "social-butterfly")
-      await this.awardBadge(userId, "social-butterfly")
+        if (roomsJoined >= 10) {
+          await this.unlockAchievement(userId, "social-butterfly")
+          await this.awardBadge(userId, "social-butterfly")
+        }
+      } catch (error: any) {
+        console.warn("Could not record study room participation in Firebase:", error.message)
+      }
     }
   }
 
   // Award a badge
   async awardBadge(userId: string, badgeId: string): Promise<void> {
-    const userStatsRef = doc(db, "userStats", userId)
-    const userStatsDoc = await getDoc(userStatsRef)
-
-    if (!userStatsDoc.exists()) {
-      await this.initUserStats(userId)
-      return
-    }
-
-    const stats = userStatsDoc.data() as UserStats
+    const stats = await this.getUserStats(userId)
 
     // Check if badge already awarded
     if (stats.badges.includes(badgeId)) {
       return
     }
 
-    // Award badge
-    await updateDoc(userStatsRef, {
-      badges: arrayUnion(badgeId),
-      updatedAt: serverTimestamp(),
-    })
+    // Update localStorage immediately
+    const updatedStats = { ...stats, badges: [...stats.badges, badgeId] }
+    localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
+
+    // Try to update Firebase if online
+    if (await this.isOnline()) {
+      try {
+        const userStatsRef = doc(db, "userStats", userId)
+        await updateDoc(userStatsRef, {
+          badges: arrayUnion(badgeId),
+          updatedAt: serverTimestamp(),
+        })
+      } catch (error: any) {
+        console.warn("Could not award badge in Firebase:", error.message)
+      }
+    }
 
     // Add XP for earning a badge
     await this.addXP(userId, 100)
@@ -879,15 +860,7 @@ class GamificationService {
   // Unlock an achievement
   async unlockAchievement(userId: string, achievementId: string): Promise<void> {
     try {
-      const userStatsRef = doc(db, "userStats", userId)
-      const userStatsDoc = await getDoc(userStatsRef)
-
-      if (!userStatsDoc.exists()) {
-        await this.initUserStats(userId)
-        return
-      }
-
-      const stats = userStatsDoc.data() as UserStats
+      const stats = await this.getUserStats(userId)
       const achievements = stats.achievements || []
 
       const achievementIndex = achievements.findIndex((a) => a.id === achievementId)
@@ -904,14 +877,22 @@ class GamificationService {
         progress: achievement.maxProgress || 0,
       }
 
-      await updateDoc(userStatsRef, {
-        achievements: updatedAchievements,
-        updatedAt: serverTimestamp(),
-      })
-
-      // Update localStorage
+      // Update localStorage immediately
       const updatedStats = { ...stats, achievements: updatedAchievements }
       localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
+
+      // Try to update Firebase if online
+      if (await this.isOnline()) {
+        try {
+          const userStatsRef = doc(db, "userStats", userId)
+          await updateDoc(userStatsRef, {
+            achievements: updatedAchievements,
+            updatedAt: serverTimestamp(),
+          })
+        } catch (error: any) {
+          console.warn("Could not unlock achievement in Firebase:", error.message)
+        }
+      }
 
       await this.addXP(userId, achievement.xpReward)
 
@@ -919,45 +900,13 @@ class GamificationService {
       this.notifyAchievementUnlocked(updatedAchievements[achievementIndex])
     } catch (error: any) {
       console.warn("Error unlocking achievement:", error.message)
-
-      // Fallback to localStorage
-      const localData = localStorage.getItem(`userStats_${userId}`)
-      if (localData) {
-        const stats = JSON.parse(localData)
-        const achievements = stats.achievements || []
-        const achievementIndex = achievements.findIndex((a) => a.id === achievementId)
-
-        if (achievementIndex !== -1 && !achievements[achievementIndex].earned) {
-          const achievement = achievements[achievementIndex]
-          achievements[achievementIndex] = {
-            ...achievement,
-            earned: true,
-            date: new Date().toLocaleDateString(),
-            progress: achievement.maxProgress || 0,
-          }
-
-          const updatedStats = { ...stats, achievements }
-          localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
-
-          await this.addXP(userId, achievement.xpReward)
-          this.notifyAchievementUnlocked(achievements[achievementIndex])
-        }
-      }
     }
   }
 
   // Update achievement progress
   async updateAchievementProgress(userId: string, achievementId: string, progress: number): Promise<void> {
     try {
-      const userStatsRef = doc(db, "userStats", userId)
-      const userStatsDoc = await getDoc(userStatsRef)
-
-      if (!userStatsDoc.exists()) {
-        await this.initUserStats(userId)
-        return
-      }
-
-      const stats = userStatsDoc.data() as UserStats
+      const stats = await this.getUserStats(userId)
       const achievements = stats.achievements || []
 
       const achievementIndex = achievements.findIndex((a) => a.id === achievementId)
@@ -971,34 +920,24 @@ class GamificationService {
         progress: Math.min(progress, updatedAchievements[achievementIndex].maxProgress || 0),
       }
 
-      await updateDoc(userStatsRef, {
-        achievements: updatedAchievements,
-        updatedAt: serverTimestamp(),
-      })
-
-      // Update localStorage
+      // Update localStorage immediately
       const updatedStats = { ...stats, achievements: updatedAchievements }
       localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
-    } catch (error: any) {
-      console.warn("Error updating achievement progress:", error.message)
 
-      // Fallback to localStorage
-      const localData = localStorage.getItem(`userStats_${userId}`)
-      if (localData) {
-        const stats = JSON.parse(localData)
-        const achievements = stats.achievements || []
-        const achievementIndex = achievements.findIndex((a) => a.id === achievementId)
-
-        if (achievementIndex !== -1 && !achievements[achievementIndex].earned) {
-          achievements[achievementIndex] = {
-            ...achievements[achievementIndex],
-            progress: Math.min(progress, achievements[achievementIndex].maxProgress || 0),
-          }
-
-          const updatedStats = { ...stats, achievements }
-          localStorage.setItem(`userStats_${userId}`, JSON.stringify(updatedStats))
+      // Try to update Firebase if online
+      if (await this.isOnline()) {
+        try {
+          const userStatsRef = doc(db, "userStats", userId)
+          await updateDoc(userStatsRef, {
+            achievements: updatedAchievements,
+            updatedAt: serverTimestamp(),
+          })
+        } catch (error: any) {
+          console.warn("Could not update achievement progress in Firebase:", error.message)
         }
       }
+    } catch (error: any) {
+      console.warn("Error updating achievement progress:", error.message)
     }
   }
 
