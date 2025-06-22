@@ -22,7 +22,12 @@ import {
   Menu,
   MessageSquare,
   Eye,
+  LogOut,
+  X,
+  Heart,
+  MessageCircle,
 } from "lucide-react"
+import { FloatingHelpButton } from "@/components/floating-help-button"
 
 // Import all the components
 import SignIn from "@/components/auth/sign-in"
@@ -40,6 +45,7 @@ import EditProfile from "@/components/profile/edit-profile"
 import FlashcardViewer from "@/components/flashcards/flashcard-viewer"
 import AchievementPopup from "@/components/gamification/achievement-popup"
 import { gamificationService, type Achievement } from "@/lib/gamification-service"
+import { PWAInstall } from "@/components/pwa-install"
 
 type TabType =
   | "dashboard"
@@ -182,8 +188,28 @@ export default function StudyHub() {
       } else {
         console.log("Existing user detected - loading existing data")
         setIsNewUser(false)
-        setShowWelcomeSplash(false) // Explicitly set to false for existing users
-        setUserDisplayName(user.displayName || localStorage.getItem(`displayName_${user.uid}`) || "Study Champion")
+        setShowWelcomeSplash(false)
+
+        // Get display name from Firebase first, then localStorage, then default
+        let displayName = user.displayName || localStorage.getItem(`displayName_${user.uid}`) || "Study Champion"
+
+        // Try to get from Firestore if not in user profile
+        if (!user.displayName) {
+          try {
+            const { doc, getDoc } = await import("firebase/firestore")
+            const { db } = await import("@/lib/firebase")
+
+            const userDoc = await getDoc(doc(db, "users", user.uid))
+            if (userDoc.exists() && userDoc.data().displayName) {
+              displayName = userDoc.data().displayName
+              localStorage.setItem(`displayName_${user.uid}`, displayName)
+            }
+          } catch (error) {
+            console.log("Could not fetch from Firestore:", error)
+          }
+        }
+
+        setUserDisplayName(displayName)
 
         // For returning users, get real data
         const stats = await gamificationService.getUserStats(user.uid)
@@ -241,10 +267,52 @@ export default function StudyHub() {
     })
   }
 
-  const handleProfileSave = (newDisplayName: string) => {
+  const handleProfileSave = async (newDisplayName: string) => {
     setUserDisplayName(newDisplayName)
     setShowEditProfile(false)
-    localStorage.setItem(`displayName_${user.uid}`, newDisplayName)
+
+    try {
+      if (user) {
+        // Save to localStorage immediately
+        localStorage.setItem(`displayName_${user.uid}`, newDisplayName)
+
+        // Update Firebase Auth profile
+        await user.updateProfile({
+          displayName: newDisplayName,
+        })
+
+        // Also save to Firestore for persistence
+        const { doc, setDoc } = await import("firebase/firestore")
+        const { db } = await import("@/lib/firebase")
+
+        await setDoc(
+          doc(db, "users", user.uid),
+          {
+            displayName: newDisplayName,
+            email: user.email,
+            updatedAt: new Date(),
+          },
+          { merge: true },
+        )
+
+        // Force reload the auth state to get updated profile
+        await user.reload()
+
+        console.log("✅ Profile updated successfully in all locations")
+
+        toast({
+          title: "Profile Updated! ✨",
+          description: "Your display name has been saved and will persist across sessions.",
+        })
+      }
+    } catch (error) {
+      console.error("❌ Error updating profile:", error)
+      toast({
+        title: "Profile Update Error",
+        description: "There was an issue saving your profile. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleAchievementPopupClose = () => {
@@ -374,152 +442,94 @@ export default function StudyHub() {
       {showMobileMenu && (
         <div className="fixed inset-0 bg-black/50 z-50 lg:hidden" onClick={() => setShowMobileMenu(false)}>
           <div
-            className="absolute top-0 left-0 bottom-0 w-64 bg-white dark:bg-gray-900 shadow-xl p-4 transform transition-transform"
+            className="absolute top-0 left-0 bottom-0 w-80 bg-white dark:bg-gray-900 shadow-xl transform transition-transform overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-2">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-1.5 rounded-lg">
-                  <Brain className="h-5 w-5 text-white" />
+            <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
+                    <Brain className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-lg text-gray-900 dark:text-white">StudyHub Elite</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Welcome, {userDisplayName.split(" ")[0]}!
+                    </p>
+                  </div>
                 </div>
-                <h2 className="font-bold text-lg">StudyHub Elite</h2>
+                <button
+                  onClick={() => setShowMobileMenu(false)}
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button
-                onClick={() => setShowMobileMenu(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
+
+              {/* User Stats in Mobile Menu */}
+              {userStats && (
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-blue-50 dark:bg-blue-900/30 p-2 rounded-lg">
+                    <Flame className="h-4 w-4 text-orange-500 mx-auto mb-1" />
+                    <div className="text-xs font-medium text-blue-700 dark:text-blue-300">{userStats.streak}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Streak</div>
+                  </div>
+                  <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded-lg">
+                    <Star className="h-4 w-4 text-yellow-500 mx-auto mb-1" />
+                    <div className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                      Lvl {userStats.level}
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Level</div>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/30 p-2 rounded-lg">
+                    <Zap className="h-4 w-4 text-green-500 mx-auto mb-1" />
+                    <div className="text-xs font-medium text-green-700 dark:text-green-300">{userStats.xp}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">XP</div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <button
-                onClick={() => handleTabClick("dashboard")}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
-                  activeTab === "dashboard"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                <Home className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">Dashboard</span>
-              </button>
+            <div className="p-4 space-y-1">
+              {[
+                { tab: "dashboard", icon: Home, label: "Dashboard" },
+                { tab: "tasks", icon: CheckSquare, label: "Tasks" },
+                { tab: "calendar", icon: Calendar, label: "Calendar" },
+                { tab: "timer", icon: Timer, label: "Timer" },
+                { tab: "flashcards", icon: BookOpen, label: "Create Flashcards" },
+                { tab: "flashcard-viewer", icon: Eye, label: "View Flashcards" },
+                { tab: "ai-tools", icon: Brain, label: "AI Tools" },
+                { tab: "ai-assistant", icon: MessageSquare, label: "AI Assistant" },
+                { tab: "collaboration", icon: Users, label: "Study Rooms" },
+                { tab: "analytics", icon: BarChart3, label: "Analytics" },
+              ].map((item) => {
+                const Icon = item.icon
+                const isActive = activeTab === item.tab
 
-              <button
-                onClick={() => handleTabClick("tasks")}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
-                  activeTab === "tasks"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                <CheckSquare className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">Tasks</span>
-              </button>
-
-              <button
-                onClick={() => handleTabClick("calendar")}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
-                  activeTab === "calendar"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                <Calendar className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">Calendar</span>
-              </button>
-
-              <button
-                onClick={() => handleTabClick("timer")}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
-                  activeTab === "timer"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                <Timer className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">Timer</span>
-              </button>
-
-              <button
-                onClick={() => handleTabClick("flashcards")}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
-                  activeTab === "flashcards"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                <BookOpen className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">Create Flashcards</span>
-              </button>
-
-              <button
-                onClick={() => handleTabClick("flashcard-viewer")}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
-                  activeTab === "flashcard-viewer"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                <Eye className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">View Flashcards</span>
-              </button>
-
-              <button
-                onClick={() => handleTabClick("ai-tools")}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
-                  activeTab === "ai-tools"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                <Brain className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">AI Tools</span>
-              </button>
-
-              <button
-                onClick={() => handleTabClick("ai-assistant")}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
-                  activeTab === "ai-assistant"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                <MessageSquare className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">AI Assistant</span>
-              </button>
-
-              <button
-                onClick={() => handleTabClick("collaboration")}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
-                  activeTab === "collaboration"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                <Users className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">Study Rooms</span>
-              </button>
-
-              <button
-                onClick={() => handleTabClick("analytics")}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${
-                  activeTab === "analytics"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                <BarChart3 className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">Analytics</span>
-              </button>
+                return (
+                  <button
+                    key={item.tab}
+                    onClick={() => handleTabClick(item.tab as TabType)}
+                    className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all duration-200 min-h-[48px] ${
+                      isActive
+                        ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5 flex-shrink-0" />
+                    <span className="truncate font-medium">{item.label}</span>
+                  </button>
+                )
+              })}
             </div>
 
-            <div className="absolute bottom-4 left-4 right-4">
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
               <Button
                 onClick={() => auth.signOut()}
                 variant="outline"
-                className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                className="w-full border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 min-h-[48px]"
               >
+                <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
             </div>
@@ -751,8 +761,41 @@ export default function StudyHub() {
 
           {/* Content */}
           {renderContent()}
+
+          {/* PWA Install Prompt */}
+          <PWAInstall />
         </div>
       </main>
+      {/* Footer */}
+      <footer className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200/50 dark:border-gray-700/50 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <span>© 2024 StudyHub Elite</span>
+              <span>•</span>
+              <span>Made with</span>
+              <Heart className="h-4 w-4 text-red-500 fill-current" />
+              <span>by Vignesh</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.open("mailto:vigneshrr2005@gmail.com", "_blank")}
+                className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-500"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Contact Developer
+              </Button>
+
+              <div className="text-xs text-gray-500 dark:text-gray-500">v1.0.0</div>
+            </div>
+          </div>
+        </div>
+      </footer>
+      {/* Floating Help Button */}
+      <FloatingHelpButton user={user} />
     </div>
   )
 }

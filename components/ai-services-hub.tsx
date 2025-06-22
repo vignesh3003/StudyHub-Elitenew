@@ -2,11 +2,12 @@
 
 import type React from "react"
 import { useState, useRef } from "react"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import {
   FileText,
@@ -20,7 +21,6 @@ import {
   Send,
   Copy,
   Trash2,
-  CheckCircle,
   Search,
   PresentationIcon,
   Calculator,
@@ -36,10 +36,11 @@ import {
   Bot,
   GraduationCap,
   FlaskConical,
-  Eye,
-  Clock,
+  Code,
+  Settings,
 } from "lucide-react"
 import { useMobile } from "@/hooks/use-mobile"
+import EnhancedQuizGenerator from "./enhanced-quiz-generator"
 
 interface AIServicesHubProps {
   user: any
@@ -61,59 +62,56 @@ export default function AIServicesHub({ user }: AIServicesHubProps) {
   const [researchResult, setResearchResult] = useState<string>("")
   const [imageAnalysisResult, setImageAnalysisResult] = useState<string>("")
   const [plannerResult, setPlannerResult] = useState<string>("")
-  const [quizResult, setQuizResult] = useState<string>("")
+  const [codeResult, setCodeResult] = useState<string>("")
   const [chatMessages, setChatMessages] = useState<
     Array<{ id: string; type: "user" | "ai"; content: string; timestamp: Date }>
   >([])
   const [chatInput, setChatInput] = useState("")
-  const { isMobile } = useMobile()
 
-  // Quiz Generator states
-  const [quizSubject, setQuizSubject] = useState("")
-  const [quizTopic, setQuizTopic] = useState("")
-  const [numQuestions, setNumQuestions] = useState("10")
-  const [difficulty, setDifficulty] = useState("medium")
-  const [questionType, setQuestionType] = useState("mcq")
-  const [parsedQuiz, setParsedQuiz] = useState<
-    Array<{
-      id: number
-      question: string
-      options?: string[]
-      answer: string
-      explanation?: string
-      type: string
-      showAnswer: boolean
-    }>
-  >([])
-
-  // Essay Writer states
+  // Enhanced Essay Writer states
+  const [essayTopic, setEssayTopic] = useState("")
   const [essayWordCount, setEssayWordCount] = useState("500")
   const [essayType, setEssayType] = useState("argumentative")
+  const [essayLevel, setEssayLevel] = useState("high-school")
+  const [essayStyle, setEssayStyle] = useState("academic")
+  const [essayRequirements, setEssayRequirements] = useState("")
 
-  // Research Assistant states
-  const [researchSubject, setResearchSubject] = useState("")
+  // Enhanced Code Helper states
+  const [codeLanguage, setCodeLanguage] = useState("python")
+  const [codeProblem, setCodeProblem] = useState("")
+  const [codeLevel, setCodeLevel] = useState("beginner")
+  const [codeApproach, setCodeApproach] = useState("step-by-step")
+  const [codeContext, setCodeContext] = useState("")
+
+  // Enhanced Research Assistant states
   const [researchTopic, setResearchTopic] = useState("")
   const [researchPurpose, setResearchPurpose] = useState("essay")
-  const [researchLevel, setResearchLevel] = useState("intermediate")
+  const [researchLevel, setResearchLevel] = useState("undergraduate")
+  const [researchScope, setResearchScope] = useState("general")
+  const [researchSources, setResearchSources] = useState("academic")
+  const [researchLength, setResearchLength] = useState("medium")
 
-  // Smart Study Planner states
-  const [studyLevel, setStudyLevel] = useState("")
-  const [studyStyle, setStudyStyle] = useState("")
-  const [subjects, setSubjects] = useState("")
-  const [challengingSubject, setChallengingSubject] = useState("")
-  const [favoriteSubject, setFavoriteSubject] = useState("")
-  const [dailyStudyTime, setDailyStudyTime] = useState("")
-  const [bestStudyTime, setBestStudyTime] = useState("")
-  const [weekendStudy, setWeekendStudy] = useState("")
-  const [primaryGoal, setPrimaryGoal] = useState("")
-  const [timeline, setTimeline] = useState("")
-  const [deadlines, setDeadlines] = useState("")
-  const [studyMethods, setStudyMethods] = useState("")
-  const [breakPreference, setBreakPreference] = useState("")
-  const [additionalInfo, setAdditionalInfo] = useState("")
+  // Study Guide states
+  const [studyTopic, setStudyTopic] = useState("")
+  const [studySubject, setStudySubject] = useState("")
+  const [studyLevel, setStudyLevel] = useState("intermediate")
+  const [studyFormat, setStudyFormat] = useState("comprehensive")
+
+  // Concept Explainer states
+  const [conceptTopic, setConceptTopic] = useState("")
+  const [conceptSubject, setConceptSubject] = useState("")
+  const [conceptLevel, setConceptLevel] = useState("beginner")
+  const [conceptStyle, setConceptStyle] = useState("simple")
+
+  // Math Solver states
+  const [mathProblem, setMathProblem] = useState("")
+  const [mathType, setMathType] = useState("algebra")
+  const [mathLevel, setMathLevel] = useState("high-school")
+  const [mathShowSteps, setMathShowSteps] = useState("detailed")
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+  const { isMobile } = useMobile()
 
   const services = [
     {
@@ -130,30 +128,30 @@ export default function AIServicesHub({ user }: AIServicesHubProps) {
       category: "Interactive",
     },
     {
+      id: "quiz-generator",
+      title: "Enhanced Quiz Generator",
+      description: "Generate comprehensive quizzes with multiple question types and PDF export",
+      icon: Brain,
+      gradient: "from-purple-500 via-pink-500 to-rose-500",
+      bgGradient: "from-purple-50 to-pink-50",
+      darkBgGradient: "from-purple-950/50 to-pink-950/50",
+      status: "available",
+      badge: "Enhanced",
+      badgeColor: "bg-purple-500",
+      category: "Assessment",
+    },
+    {
       id: "essay-writer",
-      title: "Essay Writer",
-      description: "Generate well-structured essays on any topic with proper citations",
+      title: "Advanced Essay Writer",
+      description: "Generate well-structured essays with custom word counts, styles, and academic levels",
       icon: FileText,
       gradient: "from-indigo-500 via-blue-500 to-cyan-500",
       bgGradient: "from-indigo-50 to-blue-50",
       darkBgGradient: "from-indigo-950/50 to-blue-950/50",
       status: "available",
-      badge: "Academic",
+      badge: "Enhanced",
       badgeColor: "bg-indigo-500",
       category: "Writing",
-    },
-    {
-      id: "quiz-generator",
-      title: "Quiz Generator",
-      description: "Generate practice quizzes from your study materials",
-      icon: CheckCircle,
-      gradient: "from-teal-500 via-cyan-500 to-blue-500",
-      bgGradient: "from-teal-50 to-cyan-50",
-      darkBgGradient: "from-teal-950/50 to-cyan-950/50",
-      status: "available",
-      badge: "Practice",
-      badgeColor: "bg-teal-500",
-      category: "Assessment",
     },
     {
       id: "study-guide",
@@ -197,13 +195,13 @@ export default function AIServicesHub({ user }: AIServicesHubProps) {
     {
       id: "research-assistant",
       title: "Research Assistant",
-      description: "Find credible sources and summarize research papers",
+      description: "Find credible sources and create research outlines for essays, thesis, and projects",
       icon: Search,
       gradient: "from-sky-500 via-blue-500 to-indigo-500",
       bgGradient: "from-sky-50 to-blue-50",
       darkBgGradient: "from-sky-950/50 to-blue-950/50",
       status: "available",
-      badge: "Research",
+      badge: "Enhanced",
       badgeColor: "bg-sky-500",
       category: "Research",
     },
@@ -247,17 +245,17 @@ export default function AIServicesHub({ user }: AIServicesHubProps) {
       category: "Planning",
     },
     {
-      id: "language-tutor",
-      title: "Language Tutor",
-      description: "Practice conversations and learn new languages with AI",
-      icon: Languages,
-      gradient: "from-rose-500 via-pink-500 to-fuchsia-500",
-      bgGradient: "from-rose-50 to-pink-50",
-      darkBgGradient: "from-rose-950/50 to-pink-950/50",
-      status: "coming-soon",
-      badge: "Soon",
-      badgeColor: "bg-rose-500",
-      category: "Languages",
+      id: "code-helper",
+      title: "Code Approach Guide",
+      description: "Learn programming approaches and problem-solving strategies for any language",
+      icon: Code,
+      gradient: "from-gray-500 via-slate-500 to-zinc-500",
+      bgGradient: "from-gray-50 to-slate-50",
+      darkBgGradient: "from-gray-950/50 to-slate-950/50",
+      status: "available",
+      badge: "Enhanced",
+      badgeColor: "bg-gray-500",
+      category: "STEM",
     },
     {
       id: "presentation-maker",
@@ -272,13 +270,26 @@ export default function AIServicesHub({ user }: AIServicesHubProps) {
       badgeColor: "bg-fuchsia-500",
       category: "Presentation",
     },
+    {
+      id: "language-tutor",
+      title: "Language Tutor",
+      description: "Practice conversations and learn new languages with AI",
+      icon: Languages,
+      gradient: "from-rose-500 via-pink-500 to-fuchsia-500",
+      bgGradient: "from-rose-50 to-pink-50",
+      darkBgGradient: "from-rose-950/50 to-pink-950/50",
+      status: "coming-soon",
+      badge: "Soon",
+      badgeColor: "bg-rose-500",
+      category: "Languages",
+    },
   ]
 
   const categories = [
     "All",
     "Interactive",
-    "Writing",
     "Assessment",
+    "Writing",
     "Study Tools",
     "Learning",
     "STEM",
@@ -321,14 +332,285 @@ export default function AIServicesHub({ user }: AIServicesHubProps) {
   }
 
   const processRequest = async () => {
-    if (!inputText.trim() && !selectedImage) {
-      toast({
-        title: "Input Required",
-        description: "Please provide text input or select an image.",
-        variant: "destructive",
-      })
-      return
+    let enhancedPrompt = ""
+    let hasRequiredInput = false
+
+    // Create service-specific prompts with validation
+    if (activeService === "essay-writer") {
+      if (!essayTopic.trim()) {
+        toast({
+          title: "Topic Required",
+          description: "Please enter an essay topic.",
+          variant: "destructive",
+        })
+        return
+      }
+      hasRequiredInput = true
+      enhancedPrompt = `WRITE COMPLETE ${essayType.toUpperCase()} ESSAY - EXACTLY ${essayWordCount} WORDS
+
+Topic: "${essayTopic}"
+Academic Level: ${essayLevel}
+Writing Style: ${essayStyle}
+Word Count: ${essayWordCount} words
+${essayRequirements ? `Special Requirements: ${essayRequirements}` : ""}
+
+Write a complete academic essay with:
+- Engaging title
+- Strong introduction with clear thesis statement
+- Well-developed body paragraphs with examples and evidence
+- Logical transitions between paragraphs
+- Compelling conclusion that reinforces the thesis
+- Exactly ${essayWordCount} words
+
+Write the full essay, not advice about writing.`
+    } else if (activeService === "code-helper") {
+      if (!codeProblem.trim()) {
+        toast({
+          title: "Problem Required",
+          description: "Please describe your coding problem or challenge.",
+          variant: "destructive",
+        })
+        return
+      }
+      hasRequiredInput = true
+      enhancedPrompt = `CODING APPROACH GUIDE - ${codeLanguage.toUpperCase()}
+
+Problem: ${codeProblem}
+Programming Language: ${codeLanguage}
+Experience Level: ${codeLevel}
+Approach Style: ${codeApproach}
+${codeContext ? `Additional Context: ${codeContext}` : ""}
+
+Provide a comprehensive approach guide including:
+1. PROBLEM ANALYSIS
+   - Break down the problem into smaller parts
+   - Identify key requirements and constraints
+   - Determine input/output specifications
+
+2. SOLUTION STRATEGY
+   - Recommend the best approach/algorithm
+   - Explain why this approach is suitable
+   - Discuss time and space complexity
+
+3. STEP-BY-STEP IMPLEMENTATION PLAN
+   - Outline the logical steps to solve the problem
+   - Suggest data structures to use
+   - Identify potential edge cases
+
+4. CODING BEST PRACTICES
+   - ${codeLanguage} specific conventions
+   - Error handling strategies
+   - Code organization tips
+
+5. TESTING APPROACH
+   - How to test your solution
+   - Sample test cases to consider
+   - Debugging strategies
+
+Focus on teaching problem-solving methodology, not just providing code.`
+    } else if (activeService === "research-assistant") {
+      if (!researchTopic.trim()) {
+        toast({
+          title: "Topic Required",
+          description: "Please enter a research topic.",
+          variant: "destructive",
+        })
+        return
+      }
+      hasRequiredInput = true
+      enhancedPrompt = `RESEARCH ASSISTANT - ${researchPurpose.toUpperCase()}
+
+Research Topic: "${researchTopic}"
+Purpose: ${researchPurpose}
+Academic Level: ${researchLevel}
+Research Scope: ${researchScope}
+Source Type: ${researchSources}
+Depth: ${researchLength}
+
+Provide a comprehensive research guide including:
+
+1. RESEARCH OUTLINE
+   - Main research questions to explore
+   - Key subtopics and themes
+   - Suggested research methodology
+
+2. SOURCE RECOMMENDATIONS
+   - Types of sources to look for (books, journals, websites)
+   - Specific databases and search terms
+   - Key authors and experts in this field
+
+3. RESEARCH STRUCTURE
+   ${
+     researchPurpose === "thesis"
+       ? "- Thesis chapter breakdown\n   - Literature review approach\n   - Methodology suggestions"
+       : researchPurpose === "essay"
+         ? "- Essay structure outline\n   - Argument development strategy\n   - Evidence organization"
+         : "- General research organization\n   - Information categorization\n   - Analysis framework"
+   }
+
+4. CRITICAL ANALYSIS FRAMEWORK
+   - Questions to ask about sources
+   - How to evaluate credibility
+   - Identifying bias and limitations
+
+5. CITATION AND DOCUMENTATION
+   - Proper citation formats
+   - Note-taking strategies
+   - Source organization tips
+
+Focus on providing research methodology and guidance, not just information.`
+    } else if (activeService === "study-guide") {
+      if (!studyTopic.trim()) {
+        toast({
+          title: "Topic Required",
+          description: "Please enter a study topic.",
+          variant: "destructive",
+        })
+        return
+      }
+      hasRequiredInput = true
+      enhancedPrompt = `COMPREHENSIVE STUDY GUIDE
+
+Topic: ${studyTopic}
+Subject: ${studySubject}
+Level: ${studyLevel}
+Format: ${studyFormat}
+
+Create a structured study guide with:
+
+1. TOPIC OVERVIEW
+   • Main concepts and definitions
+   • Key terminology with explanations
+   • Important dates, figures, or formulas
+
+2. DETAILED BREAKDOWN
+   • Core principles and theories
+   • Step-by-step processes
+   • Examples and applications
+
+3. STUDY STRATEGIES
+   • Memory techniques and mnemonics
+   • Visual aids and diagrams suggestions
+   • Practice methods
+
+4. SELF-ASSESSMENT
+   • Review questions
+   • Practice problems
+   • Key points checklist
+
+5. EXAM PREPARATION
+   • Likely exam topics
+   • Study schedule suggestions
+   • Last-minute review tips
+
+Format as organized sections with bullet points, NOT essay paragraphs.`
+    } else if (activeService === "concept-explainer") {
+      if (!conceptTopic.trim()) {
+        toast({
+          title: "Concept Required",
+          description: "Please enter a concept to explain.",
+          variant: "destructive",
+        })
+        return
+      }
+      hasRequiredInput = true
+      enhancedPrompt = `CONCEPT EXPLANATION - ${conceptLevel.toUpperCase()} LEVEL
+
+Concept: ${conceptTopic}
+Subject Area: ${conceptSubject}
+Explanation Level: ${conceptLevel}
+Style: ${conceptStyle}
+
+Provide a clear explanation including:
+
+1. SIMPLE DEFINITION
+   • What is this concept in plain language?
+   • Why is it important?
+
+2. DETAILED EXPLANATION
+   • How does it work?
+   • What are the key components?
+   • Step-by-step breakdown if applicable
+
+3. REAL-WORLD EXAMPLES
+   • Practical applications
+   • Analogies and comparisons
+   • Everyday examples
+
+4. COMMON MISCONCEPTIONS
+   • What people often get wrong
+   • Clarifications and corrections
+
+5. CONNECTIONS
+   • How it relates to other concepts
+   • Prerequisites to understand
+   • What builds upon this concept
+
+6. MEMORY AIDS
+   • Mnemonics or memory tricks
+   • Visual representation suggestions
+   • Key phrases to remember
+
+Use ${conceptStyle} language appropriate for ${conceptLevel} level understanding.`
+    } else if (activeService === "math-solver") {
+      if (!mathProblem.trim()) {
+        toast({
+          title: "Problem Required",
+          description: "Please enter a math problem to solve.",
+          variant: "destructive",
+        })
+        return
+      }
+      hasRequiredInput = true
+      enhancedPrompt = `MATH PROBLEM SOLVER - ${mathType.toUpperCase()}
+
+Problem: ${mathProblem}
+Math Type: ${mathType}
+Level: ${mathLevel}
+Show Steps: ${mathShowSteps}
+
+Provide a complete solution including:
+
+1. PROBLEM ANALYSIS
+   • Identify what type of problem this is
+   • What information is given?
+   • What are we trying to find?
+
+2. SOLUTION APPROACH
+   • Which method/formula to use
+   • Why this approach is best
+   • Any prerequisites or assumptions
+
+3. ${mathShowSteps === "detailed" ? "DETAILED" : "STEP-BY-STEP"} SOLUTION
+   • Show each calculation step
+   • Explain the reasoning for each step
+   • Highlight key mathematical operations
+
+4. FINAL ANSWER
+   • Clear, highlighted final result
+   • Units if applicable
+   • Verification if possible
+
+5. RELATED CONCEPTS
+   • Formulas used
+   • Similar problem types
+   • Common mistakes to avoid
+
+Show all mathematical work clearly, not just the final answer.`
+    } else {
+      if (!inputText.trim() && !selectedImage) {
+        toast({
+          title: "Input Required",
+          description: "Please provide text input or select an image.",
+          variant: "destructive",
+        })
+        return
+      }
+      hasRequiredInput = true
+      enhancedPrompt = inputText
     }
+
+    if (!hasRequiredInput) return
 
     setIsLoading(true)
     const setServiceResult = getResultSetter(activeService)
@@ -337,85 +619,6 @@ export default function AIServicesHub({ user }: AIServicesHubProps) {
     try {
       let response
       const endpoint = "/api/ai-chat"
-
-      // Create service-specific prompts
-      let enhancedPrompt = ""
-
-      if (activeService === "study-guide") {
-        enhancedPrompt = `GENERATE STUDY GUIDE ONLY - NOT AN ESSAY
-
-Topic: ${inputText}
-
-Create a structured study guide with:
-• Key concepts and definitions
-• Important facts and figures  
-• Study tips and memory aids
-• Practice questions
-• Summary of main points
-
-Format as bullet points and sections, NOT essay paragraphs.`
-      } else if (activeService === "essay-writer") {
-        enhancedPrompt = `WRITE COMPLETE ESSAY ONLY - ${essayWordCount} WORDS
-
-Topic: "${inputText}"
-
-Write a complete academic essay with:
-- Title
-- Introduction with thesis
-- Body paragraphs with examples
-- Conclusion
-- Exactly ${essayWordCount} words
-
-Write the full essay, not advice about writing.`
-      } else if (activeService === "math-solver") {
-        enhancedPrompt = `SOLVE MATH PROBLEM ONLY - NOT AN ESSAY
-
-Problem: ${inputText}
-
-Provide:
-1. Step-by-step solution
-2. Explanation of each step
-3. Final answer
-4. Relevant formulas
-
-Show mathematical work, not essay writing.`
-      } else if (activeService === "concept-explainer") {
-        enhancedPrompt = `EXPLAIN CONCEPT ONLY - NOT AN ESSAY
-
-Concept: ${inputText}
-
-Provide:
-• Clear definition
-• Simple explanation with examples
-• Why it's important
-• How it relates to other concepts
-• Memory aids
-
-Format as explanatory points, not essay paragraphs.`
-      } else if (activeService === "quiz-generator") {
-        enhancedPrompt = `GENERATE QUIZ QUESTIONS ONLY - NOT AN ESSAY
-
-Subject: ${quizSubject}
-Topic: ${quizTopic}
-Questions: ${numQuestions}
-Difficulty: ${difficulty}
-
-Create exactly ${numQuestions} multiple choice questions in this format:
-
-Question 1: [Question text]
-A) [Option A]
-B) [Option B]
-C) [Option C]
-D) [Option D]
-Correct Answer: [Letter]
-Explanation: [Brief explanation]
-
-Continue for all ${numQuestions} questions.
-
-IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
-      } else {
-        enhancedPrompt = inputText
-      }
 
       if (selectedImage) {
         const formData = new FormData()
@@ -490,8 +693,8 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
         return setImageAnalysisResult
       case "study-planner":
         return setPlannerResult
-      case "quiz-generator":
-        return setQuizResult
+      case "code-helper":
+        return setCodeResult
       default:
         return setEssayResult
     }
@@ -515,8 +718,8 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
         return imageAnalysisResult
       case "study-planner":
         return plannerResult
-      case "quiz-generator":
-        return quizResult
+      case "code-helper":
+        return codeResult
       default:
         return essayResult
     }
@@ -534,7 +737,14 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
   const clearResult = () => {
     const setServiceResult = getResultSetter(activeService)
     setServiceResult("")
+    // Clear all form fields
     setInputText("")
+    setEssayTopic("")
+    setCodeProblem("")
+    setResearchTopic("")
+    setStudyTopic("")
+    setConceptTopic("")
+    setMathProblem("")
     removeImage()
   }
 
@@ -608,58 +818,58 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
   if (!activeService) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950">
-        <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="space-y-12 max-w-7xl mx-auto px-4 sm:px-6 py-8">
           {/* Header Section */}
-          <div className="text-center space-y-6">
-            <div className="flex items-center justify-center gap-4 mb-6">
+          <div className="text-center space-y-8">
+            <div className="flex items-center justify-center gap-6 mb-8">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-2xl opacity-75 animate-pulse"></div>
-                <div className="relative p-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl shadow-2xl">
-                  <GraduationCap className="h-12 w-12 text-white" />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-3xl opacity-75 animate-pulse"></div>
+                <div className="relative p-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl shadow-2xl">
+                  <GraduationCap className="h-16 w-16 text-white" />
                 </div>
               </div>
               <div>
-                <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                   AI Services Hub
                 </h1>
-                <div className="flex items-center justify-center gap-3 mt-3">
-                  <Sparkles className="h-5 w-5 text-yellow-500 animate-pulse" />
-                  <span className="text-lg text-gray-600 dark:text-gray-300 font-medium">Powered by Advanced AI</span>
-                  <Sparkles className="h-5 w-5 text-yellow-500 animate-pulse" />
+                <div className="flex items-center justify-center gap-4 mt-4">
+                  <Sparkles className="h-6 w-6 text-yellow-500 animate-pulse" />
+                  <span className="text-2xl text-gray-600 dark:text-gray-300 font-medium">Powered by Advanced AI</span>
+                  <Sparkles className="h-6 w-6 text-yellow-500 animate-pulse" />
                 </div>
               </div>
             </div>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed">
               Transform your learning experience with cutting-edge AI tools designed specifically for students. From
               essay writing to quiz generation, we've got everything you need to excel.
             </p>
-            <div className="flex items-center justify-center gap-6 text-sm text-gray-500 dark:text-gray-400">
-              <div className="flex items-center gap-2 px-4 py-2 bg-white/50 dark:bg-slate-900/50 rounded-full backdrop-blur-sm">
-                <Zap className="h-4 w-4 text-yellow-500" />
+            <div className="flex items-center justify-center gap-8 text-lg text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-3 px-6 py-3 bg-white/50 dark:bg-slate-900/50 rounded-full backdrop-blur-sm">
+                <Zap className="h-5 w-5 text-yellow-500" />
                 <span>Lightning Fast</span>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-white/50 dark:bg-slate-900/50 rounded-full backdrop-blur-sm">
-                <Star className="h-4 w-4 text-yellow-500" />
+              <div className="flex items-center gap-3 px-6 py-3 bg-white/50 dark:bg-slate-900/50 rounded-full backdrop-blur-sm">
+                <Star className="h-5 w-5 text-yellow-500" />
                 <span>Premium Quality</span>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-white/50 dark:bg-slate-900/50 rounded-full backdrop-blur-sm">
-                <Rocket className="h-4 w-4 text-yellow-500" />
+              <div className="flex items-center gap-3 px-6 py-3 bg-white/50 dark:bg-slate-900/50 rounded-full backdrop-blur-sm">
+                <Rocket className="h-5 w-5 text-yellow-500" />
                 <span>Always Improving</span>
               </div>
             </div>
           </div>
 
           {/* Category Filter */}
-          <div className="flex flex-wrap justify-center gap-3 mb-8">
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
             {categories.map((category) => (
               <Button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
                 variant={selectedCategory === category ? "default" : "outline"}
-                className={`px-6 py-2 rounded-full transition-all duration-300 ${
+                className={`px-8 py-3 rounded-full transition-all duration-300 text-lg font-semibold ${
                   selectedCategory === category
-                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
-                    : "bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-900/80"
+                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg scale-105"
+                    : "bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-900/80 hover:scale-105"
                 }`}
               >
                 {category}
@@ -676,9 +886,9 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
               return (
                 <Card
                   key={service.id}
-                  className={`group relative overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-3 ${
+                  className={`group relative overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-4 ${
                     isDisabled ? "opacity-70" : "cursor-pointer hover:scale-105"
-                  } bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm`}
+                  } bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm h-full`}
                   onClick={() => !isDisabled && setActiveService(service.id)}
                 >
                   {/* Background Gradient */}
@@ -698,13 +908,13 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
                     {/* Badge */}
                     <div className="flex items-center justify-between">
                       <div
-                        className={`px-3 py-1 ${service.badgeColor} text-white text-xs font-bold rounded-full flex items-center gap-1 shadow-lg`}
+                        className={`px-4 py-2 ${service.badgeColor} text-white text-sm font-bold rounded-full flex items-center gap-2 shadow-lg`}
                       >
-                        <Wand2 className="h-3 w-3" />
+                        <Wand2 className="h-4 w-4" />
                         {service.badge}
                       </div>
                       {isDisabled && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
                           Coming Soon
                         </div>
                       )}
@@ -715,36 +925,38 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
                       <div
                         className={`relative p-6 bg-gradient-to-r ${service.gradient} rounded-3xl group-hover:scale-110 transition-transform duration-300 shadow-2xl`}
                       >
-                        <IconComponent className="h-10 w-10 text-white" />
+                        <IconComponent className="h-12 w-12 text-white" />
                         <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 rounded-3xl transition-opacity duration-300"></div>
                       </div>
                     </div>
 
                     {/* Title & Description */}
-                    <div className="text-center space-y-3 flex-1">
-                      <h3 className="font-bold text-xl text-gray-900 dark:text-white group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300">
+                    <div className="text-center space-y-4 flex-1">
+                      <h3 className="font-bold text-2xl text-gray-900 dark:text-white group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300">
                         {service.title}
                       </h3>
-                      <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{service.description}</p>
+                      <p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed">
+                        {service.description}
+                      </p>
                     </div>
 
                     {/* Action Button */}
                     <div className="pt-4">
                       <Button
-                        className={`w-full bg-gradient-to-r ${service.gradient} hover:shadow-xl hover:shadow-blue-500/25 transition-all duration-300 border-0 text-white font-semibold py-3 text-base ${
+                        className={`w-full bg-gradient-to-r ${service.gradient} hover:shadow-xl hover:shadow-blue-500/25 transition-all duration-300 border-0 text-white font-semibold py-4 text-lg ${
                           isDisabled ? "opacity-50 cursor-not-allowed" : ""
                         }`}
                         disabled={isDisabled}
                       >
                         {isDisabled ? (
                           <>
-                            <FlaskConical className="h-4 w-4 mr-2" />
+                            <FlaskConical className="h-5 w-5 mr-2" />
                             Coming Soon
                           </>
                         ) : (
                           <>
                             Get Started
-                            <Sparkles className="h-4 w-4 ml-2" />
+                            <Sparkles className="h-5 w-5 ml-2" />
                           </>
                         )}
                       </Button>
@@ -756,25 +968,25 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
           </div>
 
           {/* Footer Stats */}
-          <div className="text-center pt-12">
-            <div className="inline-flex items-center gap-12 px-8 py-4 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm rounded-2xl border border-white/30 dark:border-slate-700/30 shadow-xl">
+          <div className="text-center pt-16">
+            <div className="inline-flex items-center gap-16 px-12 py-6 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm rounded-3xl border border-white/30 dark:border-slate-700/30 shadow-xl">
               <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   12+
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">AI Tools</div>
+                <div className="text-lg text-gray-600 dark:text-gray-400 font-medium">AI Tools</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                   24/7
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Available</div>
+                <div className="text-lg text-gray-600 dark:text-gray-400 font-medium">Available</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-red-600 bg-clip-text text-transparent">
+                <div className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-red-600 bg-clip-text text-transparent">
                   ∞
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Possibilities</div>
+                <div className="text-lg text-gray-600 dark:text-gray-400 font-medium">Possibilities</div>
               </div>
             </div>
           </div>
@@ -786,7 +998,30 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
   const currentService = services.find((s) => s.id === activeService)!
   const IconComponent = currentService.icon
 
-  // Render the active service interface
+  // Special handling for quiz generator
+  if (activeService === "quiz-generator") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950">
+        <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <Button
+              onClick={() => setActiveService(null)}
+              variant="outline"
+              className="mb-6 flex items-center gap-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30 dark:border-slate-700/30 hover:bg-white/80 dark:hover:bg-slate-900/80 shadow-lg"
+              size="lg"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to AI Services
+            </Button>
+          </div>
+
+          <EnhancedQuizGenerator user={user} onAddQuiz={(quiz) => console.log("Quiz created:", quiz)} />
+        </div>
+      </div>
+    )
+  }
+
+  // Render the active service interface for other services
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950">
       <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -798,7 +1033,7 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
             className="mb-6 flex items-center gap-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30 dark:border-slate-700/30 hover:bg-white/80 dark:hover:bg-slate-900/80 shadow-lg"
             size="lg"
           >
-            <ArrowLeft className="h-4 w-4" /> Back to Services
+            <ArrowLeft className="h-4 w-4" /> Back to AI Services
           </Button>
 
           <div className="flex items-center gap-6 mb-6">
@@ -969,603 +1204,36 @@ IMPORTANT: Generate ONLY quiz questions, NOT essays or research papers.`
           </div>
         )}
 
-        {/* Quiz Generator - Enhanced with Question Types */}
-        {activeService === "quiz-generator" && (
-          <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm max-w-6xl mx-auto">
-            <div className="p-10 space-y-10">
-              <div className="space-y-8">
-                <div>
-                  <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">Subject</label>
-                  <Input
-                    placeholder="Enter the subject (e.g., Biology, History)..."
-                    value={quizSubject}
-                    onChange={(e) => setQuizSubject(e.target.value)}
-                    className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">
-                    Specific Topic
-                  </label>
-                  <Textarea
-                    placeholder="Enter the specific topic for your quiz (e.g., Cell Biology, World War II, Algebra)..."
-                    className="min-h-[140px] border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 text-base rounded-xl"
-                    value={quizTopic}
-                    onChange={(e) => setQuizTopic(e.target.value)}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">
-                      Question Type
-                    </label>
-                    <Select value={questionType} onValueChange={setQuestionType}>
-                      <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl">
-                        <SelectValue placeholder="Select question type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mcq">Multiple Choice (MCQ)</SelectItem>
-                        <SelectItem value="short">Short Answer</SelectItem>
-                        <SelectItem value="long">Long Answer</SelectItem>
-                        <SelectItem value="true-false">True/False</SelectItem>
-                        <SelectItem value="fill-blank">Fill in the Blanks</SelectItem>
-                        <SelectItem value="mixed">Mixed (All Types)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">
-                      Number of Questions
-                    </label>
-                    <Select value={numQuestions} onValueChange={setNumQuestions}>
-                      <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl">
-                        <SelectValue placeholder="Select number" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5 questions</SelectItem>
-                        <SelectItem value="10">10 questions</SelectItem>
-                        <SelectItem value="15">15 questions</SelectItem>
-                        <SelectItem value="20">20 questions</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">
-                      Difficulty Level
-                    </label>
-                    <Select value={difficulty} onValueChange={setDifficulty}>
-                      <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl">
-                        <SelectValue placeholder="Select difficulty" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="easy">Easy</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="hard">Hard</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={() => {
-                    let quizPrompt = ""
-
-                    if (questionType === "mcq") {
-                      quizPrompt = `GENERATE MULTIPLE CHOICE QUESTIONS ONLY
-
-Subject: ${quizSubject}
-Topic: ${quizTopic}
-Questions: ${numQuestions}
-Difficulty: ${difficulty}
-
-Create exactly ${numQuestions} multiple choice questions in this EXACT format:
-
-Q1: [Question text]
-A) [Option A]
-B) [Option B]
-C) [Option C]
-D) [Option D]
-ANSWER: [Letter]
-EXPLANATION: [Brief explanation]
-
-Q2: [Question text]
-A) [Option A]
-B) [Option B]
-C) [Option C]
-D) [Option D]
-ANSWER: [Letter]
-EXPLANATION: [Brief explanation]
-
-Continue this pattern for all ${numQuestions} questions.`
-                    } else if (questionType === "short") {
-                      quizPrompt = `GENERATE SHORT ANSWER QUESTIONS ONLY
-
-Subject: ${quizSubject}
-Topic: ${quizTopic}
-Questions: ${numQuestions}
-Difficulty: ${difficulty}
-
-Create exactly ${numQuestions} short answer questions in this EXACT format:
-
-Q1: [Question text]
-ANSWER: [Short answer - 1-2 sentences]
-EXPLANATION: [Brief explanation]
-
-Q2: [Question text]
-ANSWER: [Short answer - 1-2 sentences]
-EXPLANATION: [Brief explanation]
-
-Continue this pattern for all ${numQuestions} questions.`
-                    } else if (questionType === "long") {
-                      quizPrompt = `GENERATE LONG ANSWER QUESTIONS ONLY
-
-Subject: ${quizSubject}
-Topic: ${quizTopic}
-Questions: ${numQuestions}
-Difficulty: ${difficulty}
-
-Create exactly ${numQuestions} long answer questions in this EXACT format:
-
-Q1: [Question text]
-ANSWER: [Detailed answer - 3-5 sentences]
-EXPLANATION: [Brief explanation of key points]
-
-Q2: [Question text]
-ANSWER: [Detailed answer - 3-5 sentences]
-EXPLANATION: [Brief explanation of key points]
-
-Continue this pattern for all ${numQuestions} questions.`
-                    } else if (questionType === "true-false") {
-                      quizPrompt = `GENERATE TRUE/FALSE QUESTIONS ONLY
-
-Subject: ${quizSubject}
-Topic: ${quizTopic}
-Questions: ${numQuestions}
-Difficulty: ${difficulty}
-
-Create exactly ${numQuestions} true/false questions in this EXACT format:
-
-Q1: [Statement to evaluate]
-ANSWER: [True or False]
-EXPLANATION: [Brief explanation why it's true or false]
-
-Q2: [Statement to evaluate]
-ANSWER: [True or False]
-EXPLANATION: [Brief explanation why it's true or false]
-
-Continue this pattern for all ${numQuestions} questions.`
-                    } else if (questionType === "fill-blank") {
-                      quizPrompt = `GENERATE FILL IN THE BLANK QUESTIONS ONLY
-
-Subject: ${quizSubject}
-Topic: ${quizTopic}
-Questions: ${numQuestions}
-Difficulty: ${difficulty}
-
-Create exactly ${numQuestions} fill-in-the-blank questions in this EXACT format:
-
-Q1: [Sentence with _______ blank]
-ANSWER: [Word or phrase that fills the blank]
-EXPLANATION: [Brief explanation]
-
-Q2: [Sentence with _______ blank]
-ANSWER: [Word or phrase that fills the blank]
-EXPLANATION: [Brief explanation]
-
-Continue this pattern for all ${numQuestions} questions.`
-                    } else if (questionType === "mixed") {
-                      quizPrompt = `GENERATE MIXED QUESTION TYPES
-
-Subject: ${quizSubject}
-Topic: ${quizTopic}
-Questions: ${numQuestions}
-Difficulty: ${difficulty}
-
-Create exactly ${numQuestions} questions using different types (MCQ, Short Answer, True/False, Fill-in-blank). Mix them up and use this format:
-
-For MCQ:
-Q1: [Question text]
-A) [Option A]
-B) [Option B]
-C) [Option C]
-D) [Option D]
-ANSWER: [Letter]
-EXPLANATION: [Brief explanation]
-
-For Short Answer:
-Q2: [Question text]
-ANSWER: [Short answer]
-EXPLANATION: [Brief explanation]
-
-For True/False:
-Q3: [Statement]
-ANSWER: [True or False]
-EXPLANATION: [Brief explanation]
-
-For Fill-in-blank:
-Q4: [Sentence with _______ blank]
-ANSWER: [Word/phrase]
-EXPLANATION: [Brief explanation]
-
-Continue mixing question types for all ${numQuestions} questions.`
-                    }
-
-                    setInputText(quizPrompt)
-                    processRequest()
-                  }}
-                  disabled={isLoading || !quizSubject.trim() || !quizTopic.trim()}
-                  className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-2xl py-4 text-lg font-bold rounded-xl h-14"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-6 w-6 mr-3 animate-spin" /> Generating Quiz...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-6 w-6 mr-3" /> Generate {numQuestions}{" "}
-                      {questionType === "mcq"
-                        ? "MCQ"
-                        : questionType === "short"
-                          ? "Short Answer"
-                          : questionType === "long"
-                            ? "Long Answer"
-                            : questionType === "true-false"
-                              ? "True/False"
-                              : questionType === "fill-blank"
-                                ? "Fill-in-Blank"
-                                : "Mixed"}{" "}
-                      Questions
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {getCurrentResult(activeService) && (
-                <div className="mt-10 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-2xl flex items-center gap-3">
-                      <Sparkles className="h-6 w-6 text-yellow-500" />
-                      Interactive Quiz ({numQuestions} Questions)
-                    </h3>
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={() => {
-                          // Parse and show interactive quiz
-                          const rawQuiz = getCurrentResult(activeService)
-                          const questions = parseQuizContent(rawQuiz)
-                          setParsedQuiz(questions)
-                        }}
-                        variant="outline"
-                        size="lg"
-                        className="hover:bg-blue-50 hover:text-blue-600 rounded-xl"
-                      >
-                        <Brain className="h-5 w-5 mr-2" /> Start Interactive Quiz
-                      </Button>
-                      <Button
-                        onClick={copyResult}
-                        variant="ghost"
-                        size="lg"
-                        className="hover:bg-green-50 hover:text-green-600 rounded-xl"
-                      >
-                        <Copy className="h-5 w-5 mr-2" /> Copy Raw Text
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          clearResult()
-                          setQuizSubject("")
-                          setQuizTopic("")
-                          setNumQuestions("10")
-                          setDifficulty("medium")
-                          setQuestionType("mcq")
-                          setParsedQuiz([])
-                        }}
-                        variant="ghost"
-                        size="lg"
-                        className="hover:bg-red-50 hover:text-red-600 rounded-xl"
-                      >
-                        <Trash2 className="h-5 w-5 mr-2" /> Clear
-                      </Button>
-                    </div>
-                  </div>
-
-                  {parsedQuiz.length > 0 ? (
-                    <div className="space-y-6">
-                      {parsedQuiz.map((question, index) => (
-                        <Card key={question.id} className="border border-gray-200 dark:border-gray-700 shadow-lg">
-                          <div className="p-6 space-y-4">
-                            <div className="flex items-start justify-between">
-                              <h4 className="font-bold text-lg text-gray-800 dark:text-gray-200">
-                                Question {index + 1}
-                              </h4>
-                              <div className="flex items-center gap-2">
-                                <span className="px-3 py-1 bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-xs font-medium rounded-full">
-                                  {question.type}
-                                </span>
-                                <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-full">
-                                  {difficulty}
-                                </span>
-                              </div>
-                            </div>
-
-                            <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
-                              {question.question}
-                            </p>
-
-                            {question.options && (
-                              <div className="space-y-2 ml-4">
-                                {question.options.map((option, optIndex) => (
-                                  <div key={optIndex} className="text-gray-600 dark:text-gray-400">
-                                    {option}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                              {question.showAnswer ? (
-                                <div className="space-y-3">
-                                  <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-                                    <p className="font-semibold text-green-800 dark:text-green-300 mb-2">Answer:</p>
-                                    <p className="text-green-700 dark:text-green-400">{question.answer}</p>
-                                  </div>
-                                  {question.explanation && (
-                                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-                                      <p className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
-                                        Explanation:
-                                      </p>
-                                      <p className="text-blue-700 dark:text-blue-400">{question.explanation}</p>
-                                    </div>
-                                  )}
-                                  <Button
-                                    onClick={() => {
-                                      const updated = [...parsedQuiz]
-                                      updated[index].showAnswer = false
-                                      setParsedQuiz(updated)
-                                    }}
-                                    variant="outline"
-                                    size="sm"
-                                    className="hover:bg-gray-50 rounded-xl"
-                                  >
-                                    Hide Answer
-                                  </Button>
-                                </div>
-                              ) : (
-                                <Button
-                                  onClick={() => {
-                                    const updated = [...parsedQuiz]
-                                    updated[index].showAnswer = true
-                                    setParsedQuiz(updated)
-                                  }}
-                                  className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white rounded-xl"
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Reveal Answer
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-
-                      <div className="text-center pt-6">
-                        <Button
-                          onClick={() => {
-                            const allRevealed = parsedQuiz.every((q) => q.showAnswer)
-                            const updated = parsedQuiz.map((q) => ({ ...q, showAnswer: !allRevealed }))
-                            setParsedQuiz(updated)
-                          }}
-                          variant="outline"
-                          size="lg"
-                          className="hover:bg-blue-50 hover:text-blue-600 rounded-xl"
-                        >
-                          {parsedQuiz.every((q) => q.showAnswer) ? "Hide All Answers" : "Reveal All Answers"}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-gradient-to-br from-gray-50 to-teal-50 dark:from-gray-900 dark:to-teal-950 rounded-2xl p-8 max-h-[600px] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-inner">
-                      <div className="whitespace-pre-wrap text-base leading-relaxed">
-                        {getCurrentResult(activeService)}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
-
-        {/* Research Assistant - Enhanced with Form Fields */}
-        {activeService === "research-assistant" && (
-          <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm max-w-5xl mx-auto">
-            <div className="p-10 space-y-10">
-              <div className="space-y-8">
-                <div>
-                  <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">
-                    Research Topic
-                  </label>
-                  <Input
-                    placeholder="Enter your research topic (e.g., Climate Change, Artificial Intelligence)..."
-                    value={researchTopic}
-                    onChange={(e) => setResearchTopic(e.target.value)}
-                    className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">
-                      Research Purpose
-                    </label>
-                    <Select value={researchPurpose} onValueChange={setResearchPurpose}>
-                      <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl">
-                        <SelectValue placeholder="What is this research for?" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="essay">Essay/Paper</SelectItem>
-                        <SelectItem value="thesis">Thesis/Dissertation</SelectItem>
-                        <SelectItem value="presentation">Presentation</SelectItem>
-                        <SelectItem value="assignment">Assignment</SelectItem>
-                        <SelectItem value="general">General Knowledge</SelectItem>
-                        <SelectItem value="career-prep">Career Preparation</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">
-                      Academic Level
-                    </label>
-                    <Select value={researchLevel} onValueChange={setResearchLevel}>
-                      <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl">
-                        <SelectValue placeholder="Select your level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="high-school">High School</SelectItem>
-                        <SelectItem value="undergraduate">Undergraduate</SelectItem>
-                        <SelectItem value="graduate">Graduate</SelectItem>
-                        <SelectItem value="phd">PhD/Doctoral</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">
-                    Subject Area (Optional)
-                  </label>
-                  <Input
-                    placeholder="e.g., Biology, Computer Science, History, Psychology..."
-                    value={researchSubject}
-                    onChange={(e) => setResearchSubject(e.target.value)}
-                    className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl"
-                  />
-                </div>
-
-                <Button
-                  onClick={() => {
-                    const researchPrompt = `PROVIDE RESEARCH INFORMATION ONLY - NOT AN ESSAY
-
-Topic: ${researchTopic}
-Purpose: ${researchPurpose}
-Academic Level: ${researchLevel}
-Subject Area: ${researchSubject || "General"}
-
-Provide brief, structured research information in this format:
-
-## Key Points
-• [Important point 1]
-• [Important point 2]
-• [Important point 3]
-
-## Different Perspectives
-• [Perspective 1]
-• [Perspective 2]
-
-## Research Areas to Explore
-• [Area 1]
-• [Area 2]
-• [Area 3]
-
-## Credible Sources
-• [Source type 1]
-• [Source type 2]
-• [Source type 3]
-
-## Important Questions
-• [Question 1]
-• [Question 2]
-
-IMPORTANT: Keep it brief and structured. Provide research guidance, NOT essays.`
-
-                    setInputText(researchPrompt)
-                    processRequest()
-                  }}
-                  disabled={isLoading || !researchTopic.trim()}
-                  className="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white shadow-2xl py-4 text-lg font-bold rounded-xl h-14"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-6 w-6 mr-3 animate-spin" /> Researching...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-6 w-6 mr-3" /> Start Research
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {getCurrentResult(activeService) && (
-                <div className="mt-10 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-2xl flex items-center gap-3">
-                      <Sparkles className="h-6 w-6 text-yellow-500" />
-                      Research Information
-                    </h3>
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={copyResult}
-                        variant="ghost"
-                        size="lg"
-                        className="hover:bg-green-50 hover:text-green-600 rounded-xl"
-                      >
-                        <Copy className="h-5 w-5 mr-2" /> Copy
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          clearResult()
-                          setResearchTopic("")
-                          setResearchSubject("")
-                          setResearchPurpose("essay")
-                          setResearchLevel("undergraduate")
-                        }}
-                        variant="ghost"
-                        size="lg"
-                        className="hover:bg-red-50 hover:text-red-600 rounded-xl"
-                      >
-                        <Trash2 className="h-5 w-5 mr-2" /> Clear
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-gray-50 to-sky-50 dark:from-gray-900 dark:to-sky-950 rounded-2xl p-8 max-h-[600px] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-inner">
-                    <div className="whitespace-pre-wrap text-base leading-relaxed">
-                      {getCurrentResult(activeService)}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
-
-        {/* Essay Writer - Enhanced with Word Count */}
+        {/* Enhanced Essay Writer Interface */}
         {activeService === "essay-writer" && (
-          <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm max-w-5xl mx-auto">
-            <div className="p-10 space-y-10">
-              <div className="space-y-8">
-                <div>
-                  <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">Essay Topic</label>
-                  <Input
-                    placeholder="Enter your essay topic..."
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl"
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center gap-3">
+                  <Settings className="h-6 w-6 text-indigo-500" />
+                  Essay Configuration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="essayTopic" className="text-base font-semibold">
+                    Essay Topic *
+                  </Label>
+                  <Textarea
+                    id="essayTopic"
+                    value={essayTopic}
+                    onChange={(e) => setEssayTopic(e.target.value)}
+                    placeholder="Enter your essay topic or question..."
+                    className="min-h-[100px] border-gray-200 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500 text-base rounded-xl"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">
-                      Word Count
-                    </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Word Count</Label>
                     <Select value={essayWordCount} onValueChange={setEssayWordCount}>
-                      <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl">
-                        <SelectValue placeholder="Select word count" />
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="250">250 words</SelectItem>
@@ -1574,34 +1242,83 @@ IMPORTANT: Keep it brief and structured. Provide research guidance, NOT essays.`
                         <SelectItem value="1000">1000 words</SelectItem>
                         <SelectItem value="1500">1500 words</SelectItem>
                         <SelectItem value="2000">2000 words</SelectItem>
+                        <SelectItem value="2500">2500 words</SelectItem>
+                        <SelectItem value="3000">3000 words</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div>
-                    <label className="block text-base font-bold mb-4 text-gray-700 dark:text-gray-300">
-                      Essay Type
-                    </label>
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Essay Type</Label>
                     <Select value={essayType} onValueChange={setEssayType}>
-                      <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl">
-                        <SelectValue placeholder="Select essay type" />
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="argumentative">Argumentative</SelectItem>
+                        <SelectItem value="persuasive">Persuasive</SelectItem>
+                        <SelectItem value="expository">Expository</SelectItem>
                         <SelectItem value="descriptive">Descriptive</SelectItem>
                         <SelectItem value="narrative">Narrative</SelectItem>
-                        <SelectItem value="expository">Expository</SelectItem>
-                        <SelectItem value="analytical">Analytical</SelectItem>
                         <SelectItem value="compare-contrast">Compare & Contrast</SelectItem>
+                        <SelectItem value="cause-effect">Cause & Effect</SelectItem>
+                        <SelectItem value="analytical">Analytical</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Academic Level</Label>
+                    <Select value={essayLevel} onValueChange={setEssayLevel}>
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="middle-school">Middle School</SelectItem>
+                        <SelectItem value="high-school">High School</SelectItem>
+                        <SelectItem value="undergraduate">Undergraduate</SelectItem>
+                        <SelectItem value="graduate">Graduate</SelectItem>
+                        <SelectItem value="professional">Professional</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Writing Style</Label>
+                    <Select value={essayStyle} onValueChange={setEssayStyle}>
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="academic">Academic</SelectItem>
+                        <SelectItem value="formal">Formal</SelectItem>
+                        <SelectItem value="informal">Informal</SelectItem>
+                        <SelectItem value="creative">Creative</SelectItem>
+                        <SelectItem value="journalistic">Journalistic</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="essayRequirements" className="text-base font-semibold">
+                    Special Requirements (Optional)
+                  </Label>
+                  <Textarea
+                    id="essayRequirements"
+                    value={essayRequirements}
+                    onChange={(e) => setEssayRequirements(e.target.value)}
+                    placeholder="Any specific requirements, citations needed, format preferences..."
+                    className="min-h-[80px] border-gray-200 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500 text-base rounded-xl"
+                  />
+                </div>
+
                 <Button
                   onClick={processRequest}
-                  disabled={isLoading || !inputText.trim()}
-                  className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-2xl py-4 text-lg font-bold rounded-xl h-14"
+                  disabled={isLoading || !essayTopic.trim()}
+                  className={`w-full bg-gradient-to-r ${currentService.gradient} hover:shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 border-0 text-white font-bold py-4 text-lg rounded-xl h-14`}
                 >
                   {isLoading ? (
                     <>
@@ -1609,19 +1326,21 @@ IMPORTANT: Keep it brief and structured. Provide research guidance, NOT essays.`
                     </>
                   ) : (
                     <>
-                      <FileText className="h-6 w-6 mr-3" /> Generate {essayWordCount}-Word {essayType} Essay
+                      <FileText className="h-6 w-6 mr-3" /> Generate {essayWordCount}-Word Essay
                     </>
                   )}
                 </Button>
-              </div>
+              </CardContent>
+            </Card>
 
-              {getCurrentResult(activeService) && (
-                <div className="mt-10 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-2xl flex items-center gap-3">
-                      <Sparkles className="h-6 w-6 text-yellow-500" />
-                      Generated Essay ({essayWordCount} words)
-                    </h3>
+            <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-2xl flex items-center gap-3">
+                    <Sparkles className="h-6 w-6 text-yellow-500" />
+                    Generated Essay
+                  </CardTitle>
+                  {essayResult && (
                     <div className="flex gap-3">
                       <Button
                         onClick={copyResult}
@@ -1640,362 +1359,161 @@ IMPORTANT: Keep it brief and structured. Provide research guidance, NOT essays.`
                         <Trash2 className="h-5 w-5 mr-2" /> Clear
                       </Button>
                     </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-950 rounded-2xl p-8 max-h-[600px] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-inner">
-                    <div className="whitespace-pre-wrap text-base leading-relaxed">
-                      {getCurrentResult(activeService)}
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {essayResult ? (
+                  <div className="bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-950 rounded-2xl p-8 min-h-[500px] max-h-[700px] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-inner">
+                    <div className="prose prose-lg max-w-none">
+                      <pre className="whitespace-pre-wrap text-base leading-relaxed font-serif">{essayResult}</pre>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </Card>
+                ) : (
+                  <div className="bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-950 rounded-2xl p-12 min-h-[500px] flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                    <div className="text-center">
+                      <div className="relative mb-8">
+                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full blur-2xl opacity-50 animate-pulse"></div>
+                        <div className="relative p-8 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full shadow-2xl">
+                          <FileText className="h-16 w-16 text-white" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">Ready to write</h3>
+                      <p className="text-gray-500 dark:text-gray-400 max-w-md text-base">
+                        Configure your essay settings and click generate to create your custom essay.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
-        {/* Smart Study Planner - Enhanced with Comprehensive Form */}
-        {activeService === "study-planner" && (
-          <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm max-w-6xl mx-auto">
-            <div className="p-10 space-y-10">
-              <div className="space-y-8">
-                {/* Personal Information */}
-                <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-950/20 dark:to-violet-950/20 rounded-2xl p-6 border border-purple-200 dark:border-purple-800">
-                  <h4 className="font-bold text-lg text-purple-800 dark:text-purple-300 mb-4 flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Personal Study Profile
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                        Academic Level
-                      </label>
-                      <Select value={studyLevel} onValueChange={setStudyLevel}>
-                        <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 h-12 text-base rounded-xl">
-                          <SelectValue placeholder="Select your level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="high-school">High School</SelectItem>
-                          <SelectItem value="undergraduate">Undergraduate</SelectItem>
-                          <SelectItem value="graduate">Graduate School</SelectItem>
-                          <SelectItem value="professional">Professional/Certification</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                        Study Style Preference
-                      </label>
-                      <Select value={studyStyle} onValueChange={setStudyStyle}>
-                        <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 h-12 text-base rounded-xl">
-                          <SelectValue placeholder="How do you prefer to study?" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="intensive">Intensive (Long sessions)</SelectItem>
-                          <SelectItem value="frequent">Frequent (Short sessions)</SelectItem>
-                          <SelectItem value="mixed">Mixed approach</SelectItem>
-                          <SelectItem value="deadline-driven">Deadline-driven</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Subjects and Priorities */}
-                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-2xl p-6 border border-blue-200 dark:border-blue-800">
-                  <h4 className="font-bold text-lg text-blue-800 dark:text-blue-300 mb-4 flex items-center gap-2">
-                    <BookOpen className="h-5 w-5" />
-                    Subjects & Priorities
-                  </h4>
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                        Subjects/Courses (one per line)
-                      </label>
-                      <Textarea
-                        placeholder="Enter your subjects or courses, one per line:&#10;Mathematics&#10;Physics&#10;Chemistry&#10;English Literature"
-                        className="min-h-[120px] border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 text-base rounded-xl"
-                        value={subjects}
-                        onChange={(e) => setSubjects(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                          Most Challenging Subject
-                        </label>
-                        <Input
-                          placeholder="Which subject needs the most attention?"
-                          value={challengingSubject}
-                          onChange={(e) => setChallengingSubject(e.target.value)}
-                          className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                          Favorite Subject
-                        </label>
-                        <Input
-                          placeholder="Which subject do you enjoy most?"
-                          value={favoriteSubject}
-                          onChange={(e) => setFavoriteSubject(e.target.value)}
-                          className="border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 h-12 text-base rounded-xl"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Schedule and Availability */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-2xl p-6 border border-green-200 dark:border-green-800">
-                  <h4 className="font-bold text-lg text-green-800 dark:text-green-300 mb-4 flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Schedule & Availability
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                        Daily Study Time Available
-                      </label>
-                      <Select value={dailyStudyTime} onValueChange={setDailyStudyTime}>
-                        <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-green-500 focus:ring-green-500 h-12 text-base rounded-xl">
-                          <SelectValue placeholder="Hours per day" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1-2">1-2 hours</SelectItem>
-                          <SelectItem value="3-4">3-4 hours</SelectItem>
-                          <SelectItem value="5-6">5-6 hours</SelectItem>
-                          <SelectItem value="7-8">7-8 hours</SelectItem>
-                          <SelectItem value="9+">9+ hours</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                        Best Study Time
-                      </label>
-                      <Select value={bestStudyTime} onValueChange={setBestStudyTime}>
-                        <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-green-500 focus:ring-green-500 h-12 text-base rounded-xl">
-                          <SelectValue placeholder="When do you focus best?" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="early-morning">Early Morning (5-8 AM)</SelectItem>
-                          <SelectItem value="morning">Morning (8-12 PM)</SelectItem>
-                          <SelectItem value="afternoon">Afternoon (12-5 PM)</SelectItem>
-                          <SelectItem value="evening">Evening (5-9 PM)</SelectItem>
-                          <SelectItem value="night">Night (9 PM-12 AM)</SelectItem>
-                          <SelectItem value="late-night">Late Night (12-3 AM)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                        Weekend Availability
-                      </label>
-                      <Select value={weekendStudy} onValueChange={setWeekendStudy}>
-                        <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-green-500 focus:ring-green-500 h-12 text-base rounded-xl">
-                          <SelectValue placeholder="Weekend study time" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No weekend study</SelectItem>
-                          <SelectItem value="light">Light study (1-2 hours)</SelectItem>
-                          <SelectItem value="moderate">Moderate (3-5 hours)</SelectItem>
-                          <SelectItem value="intensive">Intensive (6+ hours)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Goals and Deadlines */}
-                <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 rounded-2xl p-6 border border-orange-200 dark:border-orange-800">
-                  <h4 className="font-bold text-lg text-orange-800 dark:text-orange-300 mb-4 flex items-center gap-2">
-                    <Target className="h-5 w-5" />
-                    Goals & Deadlines
-                  </h4>
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                          Primary Goal
-                        </label>
-                        <Select value={primaryGoal} onValueChange={setPrimaryGoal}>
-                          <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 h-12 text-base rounded-xl">
-                            <SelectValue placeholder="What's your main goal?" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="exam-prep">Exam Preparation</SelectItem>
-                            <SelectItem value="grade-improvement">Grade Improvement</SelectItem>
-                            <SelectItem value="skill-building">Skill Building</SelectItem>
-                            <SelectItem value="certification">Certification/License</SelectItem>
-                            <SelectItem value="knowledge">General Knowledge</SelectItem>
-                            <SelectItem value="career-prep">Career Preparation</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                          Timeline
-                        </label>
-                        <Select value={timeline} onValueChange={setTimeline}>
-                          <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 h-12 text-base rounded-xl">
-                            <SelectValue placeholder="When do you need to achieve this?" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1-week">1 Week</SelectItem>
-                            <SelectItem value="2-weeks">2 Weeks</SelectItem>
-                            <SelectItem value="1-month">1 Month</SelectItem>
-                            <SelectItem value="2-months">2 Months</SelectItem>
-                            <SelectItem value="3-months">3 Months</SelectItem>
-                            <SelectItem value="semester">Full Semester</SelectItem>
-                            <SelectItem value="year">Academic Year</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                        Specific Deadlines or Important Dates
-                      </label>
-                      <Textarea
-                        placeholder="List any important dates, exams, or deadlines:&#10;Math Final Exam - June 25th&#10;Physics Project Due - July 1st&#10;Chemistry Quiz - June 22nd"
-                        className="min-h-[100px] border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 text-base rounded-xl"
-                        value={deadlines}
-                        onChange={(e) => setDeadlines(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Study Preferences */}
-                <div className="bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-950/20 dark:to-rose-950/20 rounded-2xl p-6 border border-pink-200 dark:border-pink-800">
-                  <h4 className="font-bold text-lg text-pink-800 dark:text-pink-300 mb-4 flex items-center gap-2">
-                    <Brain className="h-5 w-5" />
-                    Study Preferences & Methods
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                        Preferred Study Methods
-                      </label>
-                      <Select value={studyMethods} onValueChange={setStudyMethods}>
-                        <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-pink-500 focus:ring-pink-500 h-12 text-base rounded-xl">
-                          <SelectValue placeholder="How do you like to study?" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="reading-notes">Reading & Note-taking</SelectItem>
-                          <SelectItem value="practice-problems">Practice Problems</SelectItem>
-                          <SelectItem value="flashcards">Flashcards & Memorization</SelectItem>
-                          <SelectItem value="group-study">Group Study</SelectItem>
-                          <SelectItem value="visual-learning">Visual Learning (Diagrams, Videos)</SelectItem>
-                          <SelectItem value="mixed-methods">Mixed Methods</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                        Break Preferences
-                      </label>
-                      <Select value={breakPreference} onValueChange={setBreakPreference}>
-                        <SelectTrigger className="border-gray-200 dark:border-gray-700 focus:border-pink-500 focus:ring-pink-500 h-12 text-base rounded-xl">
-                          <SelectValue placeholder="How often do you need breaks?" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pomodoro">Pomodoro (25min study, 5min break)</SelectItem>
-                          <SelectItem value="short-frequent">Short & Frequent (45min study, 15min break)</SelectItem>
-                          <SelectItem value="long-sessions">Long Sessions (90min study, 30min break)</SelectItem>
-                          <SelectItem value="flexible">Flexible based on energy</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Information */}
-                <div>
-                  <label className="block text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">
-                    Additional Information (Optional)
-                  </label>
+        {/* Enhanced Code Helper Interface */}
+        {activeService === "code-helper" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center gap-3">
+                  <Settings className="h-6 w-6 text-gray-500" />
+                  Coding Problem Setup
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="codeProblem" className="text-base font-semibold">
+                    Describe Your Coding Problem *
+                  </Label>
                   <Textarea
-                    placeholder="Any other information that might help create your perfect study plan:&#10;- I have a part-time job on weekdays&#10;- I'm more productive after exercise&#10;- I struggle with procrastination&#10;- I prefer studying in quiet environments"
-                    className="min-h-[100px] border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 text-base rounded-xl"
-                    value={additionalInfo}
-                    onChange={(e) => setAdditionalInfo(e.target.value)}
+                    id="codeProblem"
+                    value={codeProblem}
+                    onChange={(e) => setCodeProblem(e.target.value)}
+                    placeholder="Describe the coding problem you're trying to solve, what you're trying to build, or the concept you need help understanding..."
+                    className="min-h-[120px] border-gray-200 dark:border-gray-700 focus:border-gray-500 focus:ring-gray-500 text-base rounded-xl"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Programming Language</Label>
+                    <Select value={codeLanguage} onValueChange={setCodeLanguage}>
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="python">Python</SelectItem>
+                        <SelectItem value="javascript">JavaScript</SelectItem>
+                        <SelectItem value="typescript">TypeScript</SelectItem>
+                        <SelectItem value="java">Java</SelectItem>
+                        <SelectItem value="cpp">C++</SelectItem>
+                        <SelectItem value="c">C</SelectItem>
+                        <SelectItem value="csharp">C#</SelectItem>
+                        <SelectItem value="go">Go</SelectItem>
+                        <SelectItem value="rust">Rust</SelectItem>
+                        <SelectItem value="php">PHP</SelectItem>
+                        <SelectItem value="ruby">Ruby</SelectItem>
+                        <SelectItem value="swift">Swift</SelectItem>
+                        <SelectItem value="kotlin">Kotlin</SelectItem>
+                        <SelectItem value="sql">SQL</SelectItem>
+                        <SelectItem value="html-css">HTML/CSS</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Experience Level</Label>
+                    <Select value={codeLevel} onValueChange={setCodeLevel}>
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="beginner">Beginner</SelectItem>
+                        <SelectItem value="intermediate">Intermediate</SelectItem>
+                        <SelectItem value="advanced">Advanced</SelectItem>
+                        <SelectItem value="expert">Expert</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">Approach Style</Label>
+                  <Select value={codeApproach} onValueChange={setCodeApproach}>
+                    <SelectTrigger className="h-12 rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="step-by-step">Step-by-Step Breakdown</SelectItem>
+                      <SelectItem value="conceptual">Conceptual Understanding</SelectItem>
+                      <SelectItem value="algorithmic">Algorithm Design</SelectItem>
+                      <SelectItem value="debugging">Debugging Strategy</SelectItem>
+                      <SelectItem value="optimization">Performance Optimization</SelectItem>
+                      <SelectItem value="best-practices">Best Practices</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="codeContext" className="text-base font-semibold">
+                    Additional Context (Optional)
+                  </Label>
+                  <Textarea
+                    id="codeContext"
+                    value={codeContext}
+                    onChange={(e) => setCodeContext(e.target.value)}
+                    placeholder="Any additional context, constraints, or specific requirements..."
+                    className="min-h-[80px] border-gray-200 dark:border-gray-700 focus:border-gray-500 focus:ring-gray-500 text-base rounded-xl"
                   />
                 </div>
 
                 <Button
-                  onClick={() => {
-                    const studyPlanPrompt = `CREATE PERSONALIZED STUDY PLAN ONLY - NOT AN ESSAY
-
-STUDENT PROFILE:
-Academic Level: ${studyLevel}
-Study Style: ${studyStyle}
-Daily Study Time: ${dailyStudyTime}
-Best Study Time: ${bestStudyTime}
-Weekend Study: ${weekendStudy}
-Primary Goal: ${primaryGoal}
-Timeline: ${timeline}
-Study Methods: ${studyMethods}
-Break Preference: ${breakPreference}
-
-SUBJECTS:
-${subjects}
-
-CHALLENGING SUBJECT: ${challengingSubject}
-FAVORITE SUBJECT: ${favoriteSubject}
-
-DEADLINES:
-${deadlines}
-
-ADDITIONAL INFO:
-${additionalInfo}
-
-Create a detailed, personalized study plan with:
-
-## Weekly Schedule
-[Day-by-day breakdown with specific times and subjects]
-
-## Daily Study Routine
-[Recommended daily structure with breaks]
-
-## Subject Priority & Time Allocation
-[How much time to spend on each subject]
-
-## Study Strategies
-[Specific methods for each subject based on preferences]
-
-## Milestone Tracking
-[Weekly goals and checkpoints]
-
-## Tips for Success
-[Personalized advice based on their profile]
-
-IMPORTANT: Create a PRACTICAL, ACTIONABLE study plan, NOT generic advice.`
-
-                    setInputText(studyPlanPrompt)
-                    processRequest()
-                  }}
-                  disabled={isLoading || !subjects.trim() || !studyLevel || !primaryGoal}
-                  className="w-full bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white shadow-2xl py-4 text-lg font-bold rounded-xl h-14"
+                  onClick={processRequest}
+                  disabled={isLoading || !codeProblem.trim()}
+                  className={`w-full bg-gradient-to-r ${currentService.gradient} hover:shadow-2xl hover:shadow-gray-500/25 transition-all duration-300 border-0 text-white font-bold py-4 text-lg rounded-xl h-14`}
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="h-6 w-6 mr-3 animate-spin" /> Creating Your Study Plan...
+                      <Loader2 className="h-6 w-6 mr-3 animate-spin" /> Analyzing Problem...
                     </>
                   ) : (
                     <>
-                      <Calendar className="h-6 w-6 mr-3" /> Generate My Personalized Study Plan
+                      <Code className="h-6 w-6 mr-3" /> Get Coding Approach
                     </>
                   )}
                 </Button>
-              </div>
+              </CardContent>
+            </Card>
 
-              {getCurrentResult(activeService) && (
-                <div className="mt-10 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-2xl flex items-center gap-3">
-                      <Sparkles className="h-6 w-6 text-yellow-500" />
-                      Your Personalized Study Plan
-                    </h3>
+            <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-2xl flex items-center gap-3">
+                    <Sparkles className="h-6 w-6 text-yellow-500" />
+                    Approach Guide
+                  </CardTitle>
+                  {codeResult && (
                     <div className="flex gap-3">
                       <Button
                         onClick={copyResult}
@@ -2003,26 +1521,10 @@ IMPORTANT: Create a PRACTICAL, ACTIONABLE study plan, NOT generic advice.`
                         size="lg"
                         className="hover:bg-green-50 hover:text-green-600 rounded-xl"
                       >
-                        <Copy className="h-5 w-5 mr-2" /> Copy Plan
+                        <Copy className="h-5 w-5 mr-2" /> Copy
                       </Button>
                       <Button
-                        onClick={() => {
-                          clearResult()
-                          setStudyLevel("")
-                          setStudyStyle("")
-                          setSubjects("")
-                          setChallengingSubject("")
-                          setFavoriteSubject("")
-                          setDailyStudyTime("")
-                          setBestStudyTime("")
-                          setWeekendStudy("")
-                          setPrimaryGoal("")
-                          setTimeline("")
-                          setDeadlines("")
-                          setStudyMethods("")
-                          setBreakPreference("")
-                          setAdditionalInfo("")
-                        }}
+                        onClick={clearResult}
                         variant="ghost"
                         size="lg"
                         className="hover:bg-red-50 hover:text-red-600 rounded-xl"
@@ -2030,35 +1532,273 @@ IMPORTANT: Create a PRACTICAL, ACTIONABLE study plan, NOT generic advice.`
                         <Trash2 className="h-5 w-5 mr-2" /> Clear
                       </Button>
                     </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-purple-950 rounded-2xl p-8 max-h-[600px] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-inner">
-                    <div className="whitespace-pre-wrap text-base leading-relaxed">
-                      {getCurrentResult(activeService)}
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {codeResult ? (
+                  <div className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900 dark:to-slate-950 rounded-2xl p-8 min-h-[500px] max-h-[700px] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-inner">
+                    <div className="prose prose-lg max-w-none dark:prose-invert">
+                      <div
+                        className="text-gray-800 dark:text-gray-200 leading-relaxed"
+                        dangerouslySetInnerHTML={{
+                          __html: codeResult
+                            .replace(
+                              /\*\*(.*?)\*\*/g,
+                              '<strong class="text-gray-900 dark:text-white font-bold">$1</strong>',
+                            )
+                            .replace(
+                              /## (.*?)(?=\n|$)/g,
+                              '<h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4 pb-2 border-b-2 border-gray-200 dark:border-gray-700">$1</h2>',
+                            )
+                            .replace(
+                              /### (.*?)(?=\n|$)/g,
+                              '<h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mt-6 mb-3">$1</h3>',
+                            )
+                            .replace(
+                              /#### (.*?)(?=\n|$)/g,
+                              '<h4 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-2">$1</h4>',
+                            )
+                            .replace(/^\* (.*?)$/gm, '<li class="ml-4 mb-2 text-gray-700 dark:text-gray-300">• $1</li>')
+                            .replace(
+                              /^(\d+)\. (.*?)$/gm,
+                              '<li class="ml-4 mb-2 text-gray-700 dark:text-gray-300"><span class="font-semibold text-blue-600 dark:text-blue-400">$1.</span> $2</li>',
+                            )
+                            .replace(
+                              /`([^`]+)`/g,
+                              '<code class="bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded text-sm font-mono text-blue-600 dark:text-blue-400">$1</code>',
+                            )
+                            .replace(/\n\n/g, "<br><br>")
+                            .replace(/\n/g, "<br>"),
+                        }}
+                      />
                     </div>
                   </div>
+                ) : (
+                  <div className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900 dark:to-slate-950 rounded-2xl p-12 min-h-[500px] flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                    <div className="text-center">
+                      <div className="relative mb-8">
+                        <div className="absolute inset-0 bg-gradient-to-r from-gray-500 to-slate-500 rounded-full blur-2xl opacity-50 animate-pulse"></div>
+                        <div className="relative p-8 bg-gradient-to-r from-gray-500 to-slate-500 rounded-full shadow-2xl">
+                          <Code className="h-16 w-16 text-white" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">Ready to help</h3>
+                      <p className="text-gray-500 dark:text-gray-400 max-w-md text-base">
+                        Describe your coding problem and get a comprehensive approach guide.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Enhanced Research Assistant Interface */}
+        {activeService === "research-assistant" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center gap-3">
+                  <Settings className="h-6 w-6 text-sky-500" />
+                  Research Configuration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="researchTopic" className="text-base font-semibold">
+                    Research Topic *
+                  </Label>
+                  <Textarea
+                    id="researchTopic"
+                    value={researchTopic}
+                    onChange={(e) => setResearchTopic(e.target.value)}
+                    placeholder="Enter your research topic or question..."
+                    className="min-h-[100px] border-gray-200 dark:border-gray-700 focus:border-sky-500 focus:ring-sky-500 text-base rounded-xl"
+                  />
                 </div>
-              )}
-            </div>
-          </Card>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Research Purpose</Label>
+                    <Select value={researchPurpose} onValueChange={setResearchPurpose}>
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="essay">Essay Writing</SelectItem>
+                        <SelectItem value="thesis">Thesis/Dissertation</SelectItem>
+                        <SelectItem value="research-paper">Research Paper</SelectItem>
+                        <SelectItem value="presentation">Presentation</SelectItem>
+                        <SelectItem value="project">Class Project</SelectItem>
+                        <SelectItem value="literature-review">Literature Review</SelectItem>
+                        <SelectItem value="case-study">Case Study</SelectItem>
+                        <SelectItem value="general">General Knowledge</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Academic Level</Label>
+                    <Select value={researchLevel} onValueChange={setResearchLevel}>
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="high-school">High School</SelectItem>
+                        <SelectItem value="undergraduate">Undergraduate</SelectItem>
+                        <SelectItem value="graduate">Graduate</SelectItem>
+                        <SelectItem value="doctoral">Doctoral</SelectItem>
+                        <SelectItem value="professional">Professional</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Research Scope</Label>
+                    <Select value={researchScope} onValueChange={setResearchScope}>
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="general">General Overview</SelectItem>
+                        <SelectItem value="focused">Focused Analysis</SelectItem>
+                        <SelectItem value="comprehensive">Comprehensive Study</SelectItem>
+                        <SelectItem value="comparative">Comparative Analysis</SelectItem>
+                        <SelectItem value="historical">Historical Perspective</SelectItem>
+                        <SelectItem value="current">Current Trends</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Source Types</Label>
+                    <Select value={researchSources} onValueChange={setResearchSources}>
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="academic">Academic Sources</SelectItem>
+                        <SelectItem value="mixed">Mixed Sources</SelectItem>
+                        <SelectItem value="primary">Primary Sources</SelectItem>
+                        <SelectItem value="secondary">Secondary Sources</SelectItem>
+                        <SelectItem value="contemporary">Contemporary Sources</SelectItem>
+                        <SelectItem value="historical">Historical Sources</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">Research Depth</Label>
+                  <Select value={researchLength} onValueChange={setResearchLength}>
+                    <SelectTrigger className="h-12 rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="brief">Brief Overview</SelectItem>
+                      <SelectItem value="medium">Medium Depth</SelectItem>
+                      <SelectItem value="detailed">Detailed Analysis</SelectItem>
+                      <SelectItem value="extensive">Extensive Research</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  onClick={processRequest}
+                  disabled={isLoading || !researchTopic.trim()}
+                  className={`w-full bg-gradient-to-r ${currentService.gradient} hover:shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 border-0 text-white font-bold py-4 text-lg rounded-xl h-14`}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-6 w-6 mr-3 animate-spin" /> Researching...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-6 w-6 mr-3" /> Generate Research Guide
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-2xl flex items-center gap-3">
+                    <Sparkles className="h-6 w-6 text-yellow-500" />
+                    Research Guide
+                  </CardTitle>
+                  {researchResult && (
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={copyResult}
+                        variant="ghost"
+                        size="lg"
+                        className="hover:bg-green-50 hover:text-green-600 rounded-xl"
+                      >
+                        <Copy className="h-5 w-5 mr-2" /> Copy
+                      </Button>
+                      <Button
+                        onClick={clearResult}
+                        variant="ghost"
+                        size="lg"
+                        className="hover:bg-red-50 hover:text-red-600 rounded-xl"
+                      >
+                        <Trash2 className="h-5 w-5 mr-2" /> Clear
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {researchResult ? (
+                  <div className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-900 dark:to-blue-950 rounded-2xl p-8 min-h-[500px] max-h-[700px] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-inner">
+                    <pre className="whitespace-pre-wrap text-base leading-relaxed">{researchResult}</pre>
+                  </div>
+                ) : (
+                  <div className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-900 dark:to-blue-950 rounded-2xl p-12 min-h-[500px] flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                    <div className="text-center">
+                      <div className="relative mb-8">
+                        <div className="absolute inset-0 bg-gradient-to-r from-sky-500 to-blue-500 rounded-full blur-2xl opacity-50 animate-pulse"></div>
+                        <div className="relative p-8 bg-gradient-to-r from-sky-500 to-blue-500 rounded-full shadow-2xl">
+                          <Search className="h-16 w-16 text-white" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">Ready to research</h3>
+                      <p className="text-gray-500 dark:text-gray-400 max-w-md text-base">
+                        Configure your research parameters and get a comprehensive research guide.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Default interface for other services */}
-        {!["chat", "quiz-generator", "research-assistant", "essay-writer"].includes(activeService) && (
+        {!["chat", "essay-writer", "code-helper", "research-assistant"].includes(activeService) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
-              <div className="p-10 space-y-8">
-                <h3 className="font-bold text-2xl flex items-center gap-3">
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center gap-3">
                   <Wand2 className="h-6 w-6 text-purple-500" />
                   Input
-                </h3>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8">
                 <Textarea
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder={`Enter your ${activeService.replace("-", " ")} request...`}
+                  placeholder={`Enter your ${activeService?.replace("-", " ")} request...`}
                   className="min-h-[250px] border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 text-base rounded-xl"
                 />
                 {["image-analysis", "flashcards", "math-solver", "concept-explainer", "study-guide"].includes(
-                  activeService,
+                  activeService || "",
                 ) && (
                   <div>
                     <p className="text-base font-bold mb-4 text-gray-700 dark:text-gray-300">Upload Image (optional)</p>
@@ -2116,16 +1856,16 @@ IMPORTANT: Create a PRACTICAL, ACTIONABLE study plan, NOT generic advice.`
                     </>
                   )}
                 </Button>
-              </div>
+              </CardContent>
             </Card>
 
             <Card className="border-0 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
-              <div className="p-10 space-y-8">
+              <CardHeader>
                 <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-2xl flex items-center gap-3">
+                  <CardTitle className="text-2xl flex items-center gap-3">
                     <Sparkles className="h-6 w-6 text-yellow-500" />
                     Result
-                  </h3>
+                  </CardTitle>
                   {getCurrentResult(activeService) && (
                     <div className="flex gap-3">
                       <Button
@@ -2147,6 +1887,8 @@ IMPORTANT: Create a PRACTICAL, ACTIONABLE study plan, NOT generic advice.`
                     </div>
                   )}
                 </div>
+              </CardHeader>
+              <CardContent>
                 {getCurrentResult(activeService) ? (
                   <div className="bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-950 rounded-2xl p-8 min-h-[400px] max-h-[600px] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-inner">
                     <pre className="whitespace-pre-wrap text-base leading-relaxed">
@@ -2169,57 +1911,11 @@ IMPORTANT: Create a PRACTICAL, ACTIONABLE study plan, NOT generic advice.`
                     </div>
                   </div>
                 )}
-              </div>
+              </CardContent>
             </Card>
           </div>
         )}
       </div>
     </div>
   )
-}
-
-const parseQuizContent = (content: string) => {
-  const questions = []
-  const lines = content.split("\n").filter((line) => line.trim())
-
-  let currentQuestion = null
-  let questionCounter = 1
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
-
-    if (line.match(/^Q\d+:/)) {
-      if (currentQuestion) {
-        questions.push(currentQuestion)
-      }
-
-      currentQuestion = {
-        id: questionCounter++,
-        question: line.replace(/^Q\d+:\s*/, ""),
-        options: [],
-        answer: "",
-        explanation: "",
-        type: questionType === "mixed" ? "Mixed" : questionType.toUpperCase(),
-        showAnswer: false,
-      }
-    } else if (line.match(/^[A-D]\)/)) {
-      if (currentQuestion) {
-        currentQuestion.options.push(line)
-      }
-    } else if (line.startsWith("ANSWER:")) {
-      if (currentQuestion) {
-        currentQuestion.answer = line.replace("ANSWER:", "").trim()
-      }
-    } else if (line.startsWith("EXPLANATION:")) {
-      if (currentQuestion) {
-        currentQuestion.explanation = line.replace("EXPLANATION:", "").trim()
-      }
-    }
-  }
-
-  if (currentQuestion) {
-    questions.push(currentQuestion)
-  }
-
-  return questions
 }

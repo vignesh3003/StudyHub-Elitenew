@@ -35,14 +35,23 @@ export default function EditProfile({ user, displayName, onSave, onCancel }: Edi
 
     setIsLoading(true)
     try {
-      // Here you would typically update the user profile in Firebase
-      // For now, we'll just call the onSave callback
+      // Update Firebase Auth profile
+      if (user) {
+        const { updateProfile } = await import("firebase/auth")
+        await updateProfile(user, {
+          displayName: newDisplayName.trim(),
+        })
+      }
+
+      // Call the onSave callback
       onSave(newDisplayName.trim())
+
       toast({
         title: "Profile Updated! ✨",
         description: "Your display name has been updated successfully.",
       })
     } catch (error) {
+      console.error("Profile update error:", error)
       toast({
         title: "Update Failed",
         description: "Failed to update your profile. Please try again.",
